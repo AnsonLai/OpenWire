@@ -24,7 +24,7 @@ const __dirname = path.dirname(__filename);
 export const TARGETS = {
   root: {
     name: 'root',
-    description: 'Root domain deployment (https://example.com/ or Azure $web)',
+    description: 'Root domain deployment (https://example.com/)',
     base: '/',
     outDir: path.join(__dirname, 'dist', 'root'),
     cacheKey: 'root',
@@ -38,8 +38,8 @@ export const TARGETS = {
   },
   docs: {
     name: 'docs',
-    description: 'GitHub Pages docs deployment (root base path to docs/ folder)',
-    base: '/',
+    description: 'GitHub Pages docs deployment (base path /OpenWire/ for https://<username>.github.io/OpenWire/)',
+    base: '/OpenWire/',
     outDir: path.join(__dirname, 'docs'),
     cacheKey: 'docs',
   },
@@ -168,6 +168,7 @@ export function transformServiceWorker(sourceSw, base, cacheKey) {
     ["'./js/domainRegistry.js'", `'${base}js/domainRegistry.js'`],
     ["'./js/feedRegistry.js'", `'${base}js/feedRegistry.js'`],
     ["'./js/feedWeaver.js'", `'${base}js/feedWeaver.js'`],
+    ["'./js/settingsExport.js'", `'${base}js/settingsExport.js'`],
     ["'./js/archiveService.js'", `'${base}js/archiveService.js'`],
     ["'./js/fetchProxy.js'", `'${base}js/fetchProxy.js'`],
     ["'./js/pwa.js'", `'${base}js/pwa.js'`],
@@ -225,6 +226,19 @@ export function transformNewsServiceJs(sourceNewsServiceJs, base) {
   js = js.replace(/candidateFiles\.unshift\('\.\/news\.json'\);/g, `candidateFiles.unshift('${base}news.json');`);
 
   return js;
+}
+
+/**
+ * Transforms js/topicRegistry.js for a given base path:
+ * - Updates topic file paths to use base prefix
+ * 
+ * @param {string} sourceTopicRegistryJs 
+ * @param {string} base 
+ * @returns {string} Transformed js/topicRegistry.js code
+ */
+export function transformTopicRegistryJs(sourceTopicRegistryJs, base) {
+  let js = sourceTopicRegistryJs;
+  return js.replaceAll("'./data/", `'${base}data/`);
 }
 
 /**
@@ -317,7 +331,7 @@ export function compileTarget({ name, base, outDir, cacheKey }) {
   ensureDirSync(jsOutDir);
 
   // Copy unaffected JS files dynamically (including feedRegistry.js, feedWeaver.js, domainRegistry.js, etc.)
-  const specialJsFiles = new Set(['pwa.js', 'newsService.js']);
+  const specialJsFiles = new Set(['pwa.js', 'newsService.js', 'topicRegistry.js']);
   const jsSrcDir = path.join(__dirname, 'js');
   if (fs.existsSync(jsSrcDir)) {
     const allJsFiles = fs.readdirSync(jsSrcDir);
@@ -335,6 +349,10 @@ export function compileTarget({ name, base, outDir, cacheKey }) {
   // Transform newsService.js
   const newsServiceJsSrc = fs.readFileSync(path.join(__dirname, 'js', 'newsService.js'), 'utf-8');
   fs.writeFileSync(path.join(jsOutDir, 'newsService.js'), transformNewsServiceJs(newsServiceJsSrc, base), 'utf-8');
+
+  // Transform topicRegistry.js
+  const topicRegistryJsSrc = fs.readFileSync(path.join(__dirname, 'js', 'topicRegistry.js'), 'utf-8');
+  fs.writeFileSync(path.join(jsOutDir, 'topicRegistry.js'), transformTopicRegistryJs(topicRegistryJsSrc, base), 'utf-8');
 
   console.info({ target: name }, `Successfully compiled "${name}" to ${outDir}`);
 }
@@ -375,7 +393,11 @@ export function main() {
       console.error(`Unknown target "${flags.target}". Available targets: ${Object.keys(TARGETS).join(', ')}`);
       process.exit(1);
     }
-    compileTarget(target);
+    const targetConfig = { ...target };
+    if (flags.base) {
+      targetConfig.base = normalizeBasePath(flags.base);
+    }
+    compileTarget(targetConfig);
     return;
   }
 

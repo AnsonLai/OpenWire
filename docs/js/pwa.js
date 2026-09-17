@@ -22,7 +22,7 @@ export function initPWA() {
 
     window.addEventListener('load', async () => {
       try {
-        const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        const registration = await navigator.serviceWorker.register('/OpenWire/sw.js', { scope: '/OpenWire/' });
         // Force update check on every load
         await registration.update();
         console.info({ scope: registration.scope }, 'ServiceWorker registered and updated');

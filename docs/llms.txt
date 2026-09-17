@@ -17,22 +17,22 @@ OpenWire is designed to provide clean, frictionless access to news with zero adv
 
 ## Static Data Feeds (JSON)
 OpenWire publishes structured, pre-compiled JSON feeds containing article titles, sources, publication timestamps, domain classification, and direct/archive URLs:
-- [Top Stories Feed](https://openwire.news/data/news_top.json): Main curated top headlines
-- [Latest News Feed](https://openwire.news/data/news_latest.json): Most recent breaking news stream
-- [AI & Machine Learning Feed](https://openwire.news/data/news_ai.json): Artificial intelligence and machine learning developments
-- [Technology Feed](https://openwire.news/data/news_technology.json): Tech industry, computing, and consumer electronics
-- [Business & Finance Feed](https://openwire.news/data/news_business.json): Markets, economics, and corporate news
-- [World News Feed](https://openwire.news/data/news_world.json): Global international reporting and affairs
-- [Science Feed](https://openwire.news/data/news_science.json): Scientific discoveries, space exploration, and medicine
-- [Canada National Feed](https://openwire.news/data/news_canada.json): Canadian national coverage
-- [Vancouver Local Feed](https://openwire.news/data/news_vancouver.json): Metro Vancouver local news and transit
-- [British Columbia Regional Feed](https://openwire.news/data/news_bc.json): Regional news across British Columbia
-- [Entertainment Feed](https://openwire.news/data/news_entertainment.json): Culture, film, television, and arts
-- [Sports Feed](https://openwire.news/data/news_sports.json): Scores, athletics, and league updates
-- [Primary News Index](https://openwire.news/news.json): Root aggregate news bundle
+- [Top Stories Feed](https://openwire.news/OpenWire/data/news_top.json): Main curated top headlines
+- [Latest News Feed](https://openwire.news/OpenWire/data/news_latest.json): Most recent breaking news stream
+- [AI & Machine Learning Feed](https://openwire.news/OpenWire/data/news_ai.json): Artificial intelligence and machine learning developments
+- [Technology Feed](https://openwire.news/OpenWire/data/news_technology.json): Tech industry, computing, and consumer electronics
+- [Business & Finance Feed](https://openwire.news/OpenWire/data/news_business.json): Markets, economics, and corporate news
+- [World News Feed](https://openwire.news/OpenWire/data/news_world.json): Global international reporting and affairs
+- [Science Feed](https://openwire.news/OpenWire/data/news_science.json): Scientific discoveries, space exploration, and medicine
+- [Canada National Feed](https://openwire.news/OpenWire/data/news_canada.json): Canadian national coverage
+- [Vancouver Local Feed](https://openwire.news/OpenWire/data/news_vancouver.json): Metro Vancouver local news and transit
+- [British Columbia Regional Feed](https://openwire.news/OpenWire/data/news_bc.json): Regional news across British Columbia
+- [Entertainment Feed](https://openwire.news/OpenWire/data/news_entertainment.json): Culture, film, television, and arts
+- [Sports Feed](https://openwire.news/OpenWire/data/news_sports.json): Scores, athletics, and league updates
+- [Primary News Index](https://openwire.news/OpenWire/news.json): Root aggregate news bundle
 
 ## Key Links & Resources
-- [OpenWire Application](https://openwire.news/): Main progressive web application interface
-- [XML Sitemap](https://openwire.news/sitemap.xml): Search engine sitemap
-- [Web App Manifest](https://openwire.news/manifest.json): Web application metadata and PWA settings
-- [Robots Exclusion Protocol](https://openwire.news/robots.txt): Search engine and AI crawler permissions
+- [OpenWire Application](https://openwire.news/OpenWire/): Main progressive web application interface
+- [XML Sitemap](https://openwire.news/OpenWire/sitemap.xml): Search engine sitemap
+- [Web App Manifest](https://openwire.news/OpenWire/manifest.json): Web application metadata and PWA settings
+- [Robots Exclusion Protocol](https://openwire.news/OpenWire/robots.txt): Search engine and AI crawler permissions

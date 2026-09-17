@@ -17,18 +17,18 @@ import { isNotLogoOrFavicon } from './imageService.js';
 
 // Supported Google News topic feeds
 export const TOPICS = {
-  TOP: { id: 'TOP', label: 'Top Stories', file: '/data/news_top.json', url: 'https://news.google.com/rss' },
-  LATEST: { id: 'LATEST', label: 'Latest News', file: '/data/news_latest.json', url: 'https://news.google.com/rss' },
-  AI: { id: 'AI', label: 'Artificial Intelligence', file: '/data/news_ai.json', url: 'https://news.google.com/rss/search?q=%22Artificial+Intelligence%22+OR+AI+when%3A3d' },
-  CANADA: { id: 'CANADA', label: 'Canada', file: '/data/news_canada.json', url: 'https://news.google.com/rss?hl=en-CA&gl=CA&ceid=CA:en' },
-  VANCOUVER: { id: 'VANCOUVER', label: 'Vancouver (Local)', file: '/data/news_vancouver.json', url: 'https://news.google.com/rss/search?q=Vancouver&hl=en-CA&gl=CA&ceid=CA:en' },
-  BC: { id: 'BC', label: 'British Columbia (Local)', file: '/data/news_bc.json', url: 'https://news.google.com/rss/search?q=%22British+Columbia%22&hl=en-CA&gl=CA&ceid=CA:en' },
-  BUSINESS: { id: 'BUSINESS', label: 'Business & Markets', file: '/data/news_business.json', url: 'https://news.google.com/rss/headlines/section/topic/BUSINESS' },
-  TECHNOLOGY: { id: 'TECHNOLOGY', label: 'Technology', file: '/data/news_technology.json', url: 'https://news.google.com/rss/headlines/section/topic/TECHNOLOGY' },
-  WORLD: { id: 'WORLD', label: 'World', file: '/data/news_world.json', url: 'https://news.google.com/rss/headlines/section/topic/WORLD' },
-  SCIENCE: { id: 'SCIENCE', label: 'Science', file: '/data/news_science.json', url: 'https://news.google.com/rss/headlines/section/topic/SCIENCE' },
-  ENTERTAINMENT: { id: 'ENTERTAINMENT', label: 'Entertainment', file: '/data/news_entertainment.json', url: 'https://news.google.com/rss/headlines/section/topic/ENTERTAINMENT' },
-  SPORTS: { id: 'SPORTS', label: 'Sports', file: '/data/news_sports.json', url: 'https://news.google.com/rss/headlines/section/topic/SPORTS' },
+  TOP: { id: 'TOP', label: 'Top Stories', file: '/OpenWire/data/news_top.json', url: 'https://news.google.com/rss' },
+  LATEST: { id: 'LATEST', label: 'Latest News', file: '/OpenWire/data/news_latest.json', url: 'https://news.google.com/rss' },
+  AI: { id: 'AI', label: 'Artificial Intelligence', file: '/OpenWire/data/news_ai.json', url: 'https://news.google.com/rss/search?q=%22Artificial+Intelligence%22+OR+AI+when%3A3d' },
+  CANADA: { id: 'CANADA', label: 'Canada', file: '/OpenWire/data/news_canada.json', url: 'https://news.google.com/rss?hl=en-CA&gl=CA&ceid=CA:en' },
+  VANCOUVER: { id: 'VANCOUVER', label: 'Vancouver (Local)', file: '/OpenWire/data/news_vancouver.json', url: 'https://news.google.com/rss/search?q=Vancouver&hl=en-CA&gl=CA&ceid=CA:en' },
+  BC: { id: 'BC', label: 'British Columbia (Local)', file: '/OpenWire/data/news_bc.json', url: 'https://news.google.com/rss/search?q=%22British+Columbia%22&hl=en-CA&gl=CA&ceid=CA:en' },
+  BUSINESS: { id: 'BUSINESS', label: 'Business & Markets', file: '/OpenWire/data/news_business.json', url: 'https://news.google.com/rss/headlines/section/topic/BUSINESS' },
+  TECHNOLOGY: { id: 'TECHNOLOGY', label: 'Technology', file: '/OpenWire/data/news_technology.json', url: 'https://news.google.com/rss/headlines/section/topic/TECHNOLOGY' },
+  WORLD: { id: 'WORLD', label: 'World', file: '/OpenWire/data/news_world.json', url: 'https://news.google.com/rss/headlines/section/topic/WORLD' },
+  SCIENCE: { id: 'SCIENCE', label: 'Science', file: '/OpenWire/data/news_science.json', url: 'https://news.google.com/rss/headlines/section/topic/SCIENCE' },
+  ENTERTAINMENT: { id: 'ENTERTAINMENT', label: 'Entertainment', file: '/OpenWire/data/news_entertainment.json', url: 'https://news.google.com/rss/headlines/section/topic/ENTERTAINMENT' },
+  SPORTS: { id: 'SPORTS', label: 'Sports', file: '/OpenWire/data/news_sports.json', url: 'https://news.google.com/rss/headlines/section/topic/SPORTS' },
 };
 
 const DEFAULT_RSS_URL = TOPICS.TOP.url;
@@ -368,10 +368,10 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
   // 3. Try loading pre-rendered topic data first (first-time visitor or storage empty)
   const candidateFiles = [
     topicConfig.file,
-    `/data/news_${topicId.toLowerCase()}.json`,
+    `/OpenWire/data/news_${topicId.toLowerCase()}.json`,
   ];
   if (topicId === 'TOP') {
-    candidateFiles.unshift('/news.json');
+    candidateFiles.unshift('/OpenWire/news.json');
   }
 
   for (const filePath of candidateFiles) {

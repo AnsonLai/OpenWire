@@ -1,6 +1,6 @@
 # Robots.txt for OpenWire (https://openwire.news/)
 # Standard: RFC 9309 (https://www.rfc-editor.org/rfc/rfc9309.html)
-# LLM Context: https://openwire.news/llms.txt
+# LLM Context: https://openwire.news/OpenWire/llms.txt
 
 # Default rule for all web crawlers
 User-agent: *
@@ -51,4 +51,4 @@ User-agent: cohere-ai
 Allow: /
 
 # Canonical Sitemap
-Sitemap: https://openwire.news/sitemap.xml
+Sitemap: https://openwire.news/OpenWire/sitemap.xml

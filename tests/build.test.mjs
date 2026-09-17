@@ -196,7 +196,7 @@ test('compileTarget generates valid docs distribution with .nojekyll', () => {
 
   compileTarget({
     name: 'docs',
-    base: '/',
+    base: '/OpenWire/',
     outDir: tempDocsDir,
     cacheKey: 'docs',
   });
@@ -211,14 +211,14 @@ test('compileTarget generates valid docs distribution with .nojekyll', () => {
   assert.ok(fs.existsSync(path.join(tempDocsDir, 'js', 'app.js')));
 
   const indexHtml = fs.readFileSync(path.join(tempDocsDir, 'index.html'), 'utf-8');
-  assert.ok(indexHtml.includes('<base href="/">'));
+  assert.ok(indexHtml.includes('<base href="/OpenWire/">'));
 
   const manifest = JSON.parse(fs.readFileSync(path.join(tempDocsDir, 'manifest.json'), 'utf-8'));
-  assert.equal(manifest.start_url, '/');
+  assert.equal(manifest.start_url, '/OpenWire/');
 
   // Verify TARGETS configuration has docs
   assert.ok(TARGETS.docs);
-  assert.equal(TARGETS.docs.base, '/');
+  assert.equal(TARGETS.docs.base, '/OpenWire/');
   assert.equal(TARGETS.docs.name, 'docs');
 
   // Cleanup test output

@@ -20,18 +20,18 @@ export const DEFAULT_LOCAL_EDITION = {
 };
 
 export const DEFAULT_TOPICS = [
-  { id: 'TOP', label: 'Top Stories', file: './data/news_top.json', url: 'https://news.google.com/rss', isVisible: true, isCustom: false },
-  { id: 'LATEST', label: 'Latest', file: './data/news_latest.json', url: 'https://news.google.com/rss', isVisible: true, isCustom: false },
-  { id: 'AI', label: 'AI', file: './data/news_ai.json', url: 'https://news.google.com/rss/search?q=%22Artificial+Intelligence%22+OR+AI+when%3A3d', isVisible: true, isCustom: false },
-  { id: 'CANADA', label: 'Canada', file: './data/news_canada.json', url: 'https://news.google.com/rss?hl=en-CA&gl=CA&ceid=CA:en', isVisible: true, isCustom: false },
-  { id: 'VANCOUVER', label: 'Vancouver (Local)', file: './data/news_vancouver.json', url: 'https://news.google.com/rss/search?q=Vancouver&hl=en-CA&gl=CA&ceid=CA:en', isVisible: true, isCustom: false },
-  { id: 'BC', label: 'British Columbia (Local)', file: './data/news_bc.json', url: 'https://news.google.com/rss/search?q=%22British+Columbia%22&hl=en-CA&gl=CA&ceid=CA:en', isVisible: true, isCustom: false },
-  { id: 'BUSINESS', label: 'Business', file: './data/news_business.json', url: 'https://news.google.com/rss/headlines/section/topic/BUSINESS', isVisible: true, isCustom: false },
-  { id: 'TECHNOLOGY', label: 'Tech', file: './data/news_technology.json', url: 'https://news.google.com/rss/headlines/section/topic/TECHNOLOGY', isVisible: true, isCustom: false },
-  { id: 'WORLD', label: 'World', file: './data/news_world.json', url: 'https://news.google.com/rss/headlines/section/topic/WORLD', isVisible: true, isCustom: false },
-  { id: 'SCIENCE', label: 'Science', file: './data/news_science.json', url: 'https://news.google.com/rss/headlines/section/topic/SCIENCE', isVisible: true, isCustom: false },
-  { id: 'ENTERTAINMENT', label: 'Entertainment', file: './data/news_entertainment.json', url: 'https://news.google.com/rss/headlines/section/topic/ENTERTAINMENT', isVisible: true, isCustom: false },
-  { id: 'SPORTS', label: 'Sports', file: './data/news_sports.json', url: 'https://news.google.com/rss/headlines/section/topic/SPORTS', isVisible: true, isCustom: false },
+  { id: 'TOP', label: 'Top Stories', file: '/OpenWire/data/news_top.json', url: 'https://news.google.com/rss', isVisible: true, isCustom: false },
+  { id: 'LATEST', label: 'Latest', file: '/OpenWire/data/news_latest.json', url: 'https://news.google.com/rss', isVisible: true, isCustom: false },
+  { id: 'AI', label: 'AI', file: '/OpenWire/data/news_ai.json', url: 'https://news.google.com/rss/search?q=%22Artificial+Intelligence%22+OR+AI+when%3A3d', isVisible: true, isCustom: false },
+  { id: 'CANADA', label: 'Canada', file: '/OpenWire/data/news_canada.json', url: 'https://news.google.com/rss?hl=en-CA&gl=CA&ceid=CA:en', isVisible: true, isCustom: false },
+  { id: 'VANCOUVER', label: 'Vancouver (Local)', file: '/OpenWire/data/news_vancouver.json', url: 'https://news.google.com/rss/search?q=Vancouver&hl=en-CA&gl=CA&ceid=CA:en', isVisible: true, isCustom: false },
+  { id: 'BC', label: 'British Columbia (Local)', file: '/OpenWire/data/news_bc.json', url: 'https://news.google.com/rss/search?q=%22British+Columbia%22&hl=en-CA&gl=CA&ceid=CA:en', isVisible: true, isCustom: false },
+  { id: 'BUSINESS', label: 'Business', file: '/OpenWire/data/news_business.json', url: 'https://news.google.com/rss/headlines/section/topic/BUSINESS', isVisible: true, isCustom: false },
+  { id: 'TECHNOLOGY', label: 'Tech', file: '/OpenWire/data/news_technology.json', url: 'https://news.google.com/rss/headlines/section/topic/TECHNOLOGY', isVisible: true, isCustom: false },
+  { id: 'WORLD', label: 'World', file: '/OpenWire/data/news_world.json', url: 'https://news.google.com/rss/headlines/section/topic/WORLD', isVisible: true, isCustom: false },
+  { id: 'SCIENCE', label: 'Science', file: '/OpenWire/data/news_science.json', url: 'https://news.google.com/rss/headlines/section/topic/SCIENCE', isVisible: true, isCustom: false },
+  { id: 'ENTERTAINMENT', label: 'Entertainment', file: '/OpenWire/data/news_entertainment.json', url: 'https://news.google.com/rss/headlines/section/topic/ENTERTAINMENT', isVisible: true, isCustom: false },
+  { id: 'SPORTS', label: 'Sports', file: '/OpenWire/data/news_sports.json', url: 'https://news.google.com/rss/headlines/section/topic/SPORTS', isVisible: true, isCustom: false },
 ];
 
 /**
@@ -244,11 +244,11 @@ export function getAllTopics() {
     if (topic.id === 'VANCOUVER') {
       label = `${localEdition.city} (Local)`;
       url = `https://news.google.com/rss/search?q=${encodeURIComponent(localEdition.city)}&hl=en-CA&gl=CA&ceid=CA:en`;
-      file = isDefaultCity ? './data/news_vancouver.json' : null;
+      file = isDefaultCity ? '/OpenWire/data/news_vancouver.json' : null;
     } else if (topic.id === 'BC') {
       label = `${localEdition.region} (Local)`;
       url = `https://news.google.com/rss/search?q=${encodeURIComponent('"' + localEdition.region + '"')}&hl=en-CA&gl=CA&ceid=CA:en`;
-      file = isDefaultRegion ? './data/news_bc.json' : null;
+      file = isDefaultRegion ? '/OpenWire/data/news_bc.json' : null;
     }
 
     const isVis = !hiddenSet.has(topic.id);

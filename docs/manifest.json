@@ -2,15 +2,15 @@
   "name": "OpenWire News",
   "short_name": "OpenWire",
   "description": "Fast news aggregator with smart paywall routing and archive scanning",
-  "id": "/",
-  "start_url": "/",
-  "scope": "/",
+  "id": "/OpenWire/",
+  "start_url": "/OpenWire/",
+  "scope": "/OpenWire/",
   "display": "standalone",
   "background_color": "#121413",
   "theme_color": "#10b981",
   "orientation": "portrait-primary",
   "share_target": {
-    "action": "/",
+    "action": "/OpenWire/",
     "method": "GET",
     "enctype": "application/x-www-form-urlencoded",
     "params": {
@@ -24,31 +24,31 @@
   },
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/OpenWire/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-maskable-192.png",
+      "src": "/OpenWire/icons/icon-maskable-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/OpenWire/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-maskable-512.png",
+      "src": "/OpenWire/icons/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/icon.svg",
+      "src": "/OpenWire/icons/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
