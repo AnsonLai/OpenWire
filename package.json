@@ -1,0 +1,22 @@
+{
+  "name": "openwire-news-aggregator",
+  "version": "1.0.0",
+  "description": "Fast static PWA news aggregator with smart paywall routing and archive scanning",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "build": "node build.js",
+    "build:root": "node build.js --target=root",
+    "build:subfolder": "node build.js --target=news_aggregator",
+    "build:docs": "node build.js --target=docs"
+  },
+  "keywords": [
+    "news",
+    "aggregator",
+    "pwa",
+    "jamstack",
+    "paywall-bypass"
+  ],
+  "author": "",
+  "license": "AGPL-3.0-only"
+}

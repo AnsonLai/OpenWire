@@ -1,0 +1,54 @@
+# Robots.txt for OpenWire (https://openwire.news/)
+# Standard: RFC 9309 (https://www.rfc-editor.org/rfc/rfc9309.html)
+# LLM Context: https://openwire.news/llms.txt
+
+# Default rule for all web crawlers
+User-agent: *
+Allow: /
+
+# Explicit rules for major search engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+# Explicit rules for AI search engines and LLM agents
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+# Canonical Sitemap
+Sitemap: https://openwire.news/sitemap.xml

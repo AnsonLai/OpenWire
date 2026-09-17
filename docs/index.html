@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base href="/">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#10b981">
+  <meta name="color-scheme" content="light dark">
+
+  <!-- Primary SEO Meta Tags -->
+  <title>OpenWire | Fast, Frictionless News Aggregator</title>
+  <meta name="title" content="OpenWire | Fast, Frictionless News Aggregator">
+  <meta name="description" content="Lightning-fast, uncluttered news aggregator with intelligent paywall routing, archive fallbacks, and real-time RSS feeds. Read news without barriers.">
+  <meta name="keywords" content="OpenWire, news aggregator, RSS reader, top headlines, breaking news, uncluttered news, paywall bypass, archive reader, PWA, static news app">
+  <meta name="author" content="OpenWire">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="application-name" content="OpenWire">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="canonical" href="./">
+
+  <!-- Open Graph / Facebook / LinkedIn / Discord -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="OpenWire">
+  <meta property="og:title" content="OpenWire | Fast, Frictionless News Aggregator">
+  <meta property="og:description" content="Lightning-fast, uncluttered news aggregator with intelligent paywall routing, archive fallbacks, and real-time RSS feeds.">
+  <meta property="og:image" content="/icons/icon-512.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:image:alt" content="OpenWire News Aggregator Emblem">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter / X Cards -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="OpenWire | Fast, Frictionless News Aggregator">
+  <meta name="twitter:description" content="Lightning-fast, uncluttered news aggregator with intelligent paywall routing, archive fallbacks, and real-time RSS feeds.">
+  <meta name="twitter:image" content="/icons/icon-512.png">
+  <meta name="twitter:image:alt" content="OpenWire News Aggregator Emblem">
+
+  <!-- iOS PWA & Mobile Web Capabilities -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="OpenWire">
+
+  <!-- Favicon & App Icons (Android Chrome, iOS Safari, Desktop) -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png">
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
+
+  <!-- Schema.org JSON-LD Structured Data for Rich Search Snippets -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://openwire.news/#website",
+        "url": "https://openwire.news/",
+        "name": "OpenWire",
+        "headline": "Fast, Frictionless News Aggregator",
+        "description": "Lightning-fast, clean news aggregator with smart paywall routing and archive scanning.",
+        "inLanguage": "en-US"
+      },
+      {
+        "@type": "WebApplication",
+        "@id": "https://openwire.news/#app",
+        "name": "OpenWire News",
+        "applicationCategory": "NewsApplication",
+        "operatingSystem": "All",
+        "browserRequirements": "Requires JavaScript. Requires HTML5.",
+        "description": "Fast news aggregator with smart paywall routing, archive fallbacks, and real-time RSS feeds.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    ]
+  }
+  </script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <!-- App Header & Navigation Bar -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-section">
+        <div class="brand-logo" aria-label="OpenWire logo">
+          <svg class="brand-logo-icon" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="header-ow-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#10b981" />
+                <stop offset="100%" stop-color="#047857" />
+              </linearGradient>
+            </defs>
+            <rect width="512" height="512" rx="112" fill="url(#header-ow-grad)" />
+            <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M 346.3 205.15 A 116 116 0 1 0 346.3 306.85" stroke-width="32" />
+              <line x1="180" y1="205" x2="290" y2="205" stroke-width="24" />
+              <line x1="175" y1="256" x2="386" y2="256" stroke-width="32" />
+              <line x1="180" y1="307" x2="265" y2="307" stroke-width="24" />
+            </g>
+          </svg>
+        </div>
+        <h1 class="brand-title">OpenWire</h1>
+      </div>
+
+      <!-- Hamburger Menu Navigation -->
+      <div class="header-menu-container">
+        <!-- Hamburger Button -->
+        <button id="menuToggleBtn" class="btn-icon hamburger-btn" aria-label="Open menu" aria-expanded="false" title="Menu">
+          <svg class="hamburger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="6" x2="20" y2="6"></line>
+            <line x1="4" y1="12" x2="20" y2="12"></line>
+            <line x1="4" y1="18" x2="20" y2="18"></line>
+          </svg>
+        </button>
+
+        <!-- Dropdown Menu -->
+        <div id="headerMenuDropdown" class="header-menu-dropdown" aria-hidden="true">
+          <div class="menu-section-header">Controls</div>
+
+          <!-- Refresh Button -->
+          <button id="refreshBtn" class="menu-item-btn" title="Refresh news feed">
+            <svg id="refreshIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"></path>
+            </svg>
+            <span>Refresh Feed</span>
+          </button>
+
+          <!-- Quick Open / Bypass Article URL -->
+          <button id="openQuickUrlBtn" class="menu-item-btn" title="Open or bypass any article URL">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            <span>Open Article URL</span>
+          </button>
+
+          <!-- Hide Locked Switch -->
+          <label class="menu-item-toggle" title="Filter out paywalled articles without archive copies">
+            <div class="menu-item-label-group">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="0" ry="0"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              <span>Hide Locked</span>
+            </div>
+            <input type="checkbox" id="hideLockedCheckbox" class="menu-checkbox">
+          </label>
+
+          <!-- Rules & Domain Strategy Manager Button -->
+          <button id="openRulesBtn" class="menu-item-btn" title="Manage domain paywall strategies">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            <span>Paywall Rules</span>
+          </button>
+
+          <!-- Customize Topics Button -->
+          <button id="openTopicsBtn" class="menu-item-btn" title="Customize news topics">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="6" x2="20" y2="6"></line>
+              <line x1="4" y1="12" x2="14" y2="12"></line>
+              <line x1="4" y1="18" x2="10" y2="18"></line>
+              <circle cx="18" cy="15" r="3"></circle>
+            </svg>
+            <span>Customize Topics</span>
+          </button>
+
+          <!-- Export Settings Button -->
+          <button id="exportSettingsBtn" class="menu-item-btn" title="Export all topics, RSS sources, and paywall rules as a single JSON file">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Export Settings (JSON)</span>
+          </button>
+
+          <!-- PWA Install Button (hidden until prompt triggers) -->
+          <button id="installAppBtn" class="menu-item-btn" style="display: none;" title="Install App to device">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Install App</span>
+          </button>
+
+          <!-- Buy Me a Coffee Support Button -->
+          <div class="menu-bmc-container">
+            <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="ansonlai" data-color="#40DCA5" data-emoji="☕" data-font="Poppins" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#ffffff" data-coffee-color="#FFDD00" ></script>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Feed Container -->
+  <main class="feed-container">
+    <!-- Topics Bar Navigation (Flipboard style) -->
+    <nav class="topics-bar" id="topicsBar" aria-label="News Topics">
+      <button class="topic-pill active" data-topic="TOP">TOP STORIES</button>
+      <button class="topic-pill" data-topic="LATEST">LATEST</button>
+      <button class="topic-pill" data-topic="AI">AI</button>
+      <button class="topic-pill" data-topic="CANADA">CANADA</button>
+      <button class="topic-pill" data-topic="VANCOUVER">LOCAL: VANCOUVER</button>
+      <button class="topic-pill" data-topic="BC">LOCAL: BC</button>
+      <button class="topic-pill" data-topic="BUSINESS">BUSINESS</button>
+      <button class="topic-pill" data-topic="TECHNOLOGY">TECH</button>
+      <button class="topic-pill" data-topic="WORLD">WORLD</button>
+      <button class="topic-pill" data-topic="SCIENCE">SCIENCE</button>
+      <button class="topic-pill" data-topic="ENTERTAINMENT">ENTERTAINMENT</button>
+      <button class="topic-pill" data-topic="SPORTS">SPORTS</button>
+    </nav>
+
+    <!-- Editorial Section Header (Flipboard magazine style) -->
+    <div class="editorial-header">
+      <div class="editorial-header-text">
+        <h2 class="editorial-heading" id="editorialHeading">TOP STORIES</h2>
+        <div class="editorial-header-line"></div>
+      </div>
+      <div class="editorial-header-actions">
+        <div class="sort-select-wrapper">
+          <select id="feedSortSelect" class="sort-select" title="Sort headlines order" aria-label="Sort headlines order">
+            <option value="curated">Curated</option>
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="state-container">
+      <h2 class="state-title">Fetching Latest News</h2>
+      <p class="state-desc">Aggregating top headlines and checking domain rules...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="state-container" style="display: none;">
+      <h2 class="state-title" style="color: #dc2626;">Unable to Load Headlines</h2>
+      <p id="errorMessage" class="state-desc"></p>
+      <button onclick="window.location.reload()" class="btn-icon" style="margin: 0 auto;">Try Again</button>
+    </div>
+
+    <!-- Articles Feed List -->
+    <section id="feedList" class="feed-list" style="display: none;"></section>
+  </main>
+
+  <!-- Domain Strategy Management Modal -->
+  <div id="rulesModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="rulesModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="rulesModalTitle" class="modal-title">Domain Strategy Registry</h2>
+        <button id="closeRulesBtn" class="modal-close" aria-label="Close dialog">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">
+          Customize how each news domain is handled. Changes are saved locally on this device.
+        </p>
+
+        <!-- Add Custom Rule Form -->
+        <form id="addRuleForm" class="rule-form">
+          <input type="text" id="inputDomain" class="form-input" placeholder="e.g. wsj.com" required>
+          <select id="selectStrategy" class="form-select">
+            <option value="direct">Direct (Free / Open)</option>
+            <option value="smry">SMRY.ai</option>
+            <option value="removepaywall">RemovePaywall</option>
+            <option value="unwall">UnWall (unwall.app)</option>
+            <option value="freedium">Freedium Mirror (Medium, NYT, WaPo, Bloomberg, Reuters, Economist, FT)</option>
+            <option value="reader">Reader Mode (No-JS / Bot)</option>
+            <option value="archive_is">Archive.is (Scan)</option>
+            <option value="wayback">Wayback Machine</option>
+          </select>
+          <button type="submit" class="form-btn">Save Rule</button>
+        </form>
+
+        <!-- Existing Rules Table -->
+        <div id="rulesTableBody" class="rules-list"></div>
+      </div>
+
+      <div class="modal-footer">
+        <div class="modal-footer-left">
+          <button id="resetRulesBtn" class="btn-icon" style="color: #dc2626;">Reset to Defaults</button>
+          <button id="modalExportRulesBtn" class="btn-icon" title="Export all topics, RSS sources, and paywall rules as a single JSON file">Export JSON</button>
+        </div>
+        <button onclick="document.getElementById('rulesModal').classList.remove('open')" class="btn-icon">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Topic Settings Management Modal -->
+  <div id="topicsModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="topicsModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="topicsModalTitle" class="modal-title">Customize News Topics</h2>
+        <button id="closeTopicsBtn" class="modal-close" aria-label="Close dialog">&times;</button>
+      </div>
+
+      <!-- Modal Navigation Tabs -->
+      <div class="modal-tabs" role="tablist" aria-label="Topic Settings Tabs">
+        <button type="button" class="modal-tab-btn active" data-modal-tab="topics" role="tab" aria-selected="true" id="tabBtnTopics">
+          <span>📋 Topics Bar</span>
+        </button>
+        <button type="button" class="modal-tab-btn" data-modal-tab="new_topic" role="tab" aria-selected="false" id="tabBtnNewTopic">
+          <span>➕ New Topic</span>
+        </button>
+        <button type="button" class="modal-tab-btn" data-modal-tab="sources" role="tab" aria-selected="false" id="tabBtnSources">
+          <span>📡 RSS Sources</span>
+        </button>
+        <button type="button" class="modal-tab-btn" data-modal-tab="local" role="tab" aria-selected="false" id="tabBtnLocal">
+          <span>📍 Local Edition</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- TAB 1: Topics Navigation Bar -->
+        <div id="tabPanelTopics" class="modal-tab-panel active" role="tabpanel" aria-labelledby="tabBtnTopics">
+          <div class="topics-list-header">
+            <span class="topics-list-title">Topics Navigation Bar</span>
+            <span class="topics-list-subtitle">Toggle checkboxes to show or hide on the top bar. Drag handles to reorder.</span>
+          </div>
+
+          <!-- Existing Topics Table -->
+          <div id="topicsTableBody" class="topics-list"></div>
+        </div>
+
+        <!-- TAB 2: Add New Topic with Comma-Separated Keywords & Source Selection -->
+        <div id="tabPanelNewTopic" class="modal-tab-panel" role="tabpanel" aria-labelledby="tabBtnNewTopic" style="display: none;">
+          <form id="addNewTopicForm" class="topic-form">
+            <div class="topic-form-header">
+              <span class="topic-form-title">Create New Topic</span>
+              <span class="topic-form-subtitle">Define a topic with custom keywords and select which RSS sources to weave into the feed.</span>
+            </div>
+
+            <!-- Preset Topic Suggestions Dropdown -->
+            <div class="topic-form-field">
+              <label for="selectTopicPreset" class="topic-form-label">Choose from Popular Topic Ideas (Optional)</label>
+              <select id="selectTopicPreset" class="form-select topic-preset-select">
+                <option value="">-- Select a preset or create your own below --</option>
+                <option value="AI &amp; Robotics|artificial intelligence, machine learning, robotics, OpenAI, Anthropic">🤖 AI &amp; Robotics</option>
+                <option value="Crypto &amp; Web3|cryptocurrency, bitcoin, ethereum, blockchain, web3">🪙 Crypto &amp; Web3</option>
+                <option value="Space &amp; Astronomy|SpaceX, NASA, astronomy, space exploration, James Webb">🚀 Space &amp; Astronomy</option>
+                <option value="Gaming &amp; Esports|video games, gaming, esports, PlayStation, Xbox, Nintendo">🎮 Gaming &amp; Esports</option>
+                <option value="Electric Vehicles|electric vehicles, EV, Tesla, Rivian, clean mobility">⚡ Electric Vehicles</option>
+                <option value="Climate &amp; Clean Energy|climate change, renewable energy, clean energy, solar, wind">🌱 Climate &amp; Clean Energy</option>
+                <option value="Economy &amp; Markets|economy, stock market, inflation, Federal Reserve, interest rates">📈 Economy &amp; Markets</option>
+                <option value="Health &amp; Medicine|health, medicine, healthcare, biotech, wellness">🏥 Health &amp; Medicine</option>
+                <option value="Politics &amp; Government|politics, congress, white house, elections, legislation">🏛️ Politics &amp; Government</option>
+                <option value="CUSTOM">✏️ Custom Topic...</option>
+              </select>
+            </div>
+
+            <!-- Topic Label -->
+            <div class="topic-form-field">
+              <label for="inputNewTopicLabel" class="topic-form-label">Topic Label</label>
+              <input type="text" id="inputNewTopicLabel" class="form-input" placeholder="e.g. AI &amp; Robotics, Vancouver Canucks, Space" required>
+              <span class="topic-form-hint">The display name that appears on the navigation tab.</span>
+            </div>
+
+            <!-- Keywords & Phrases -->
+            <div class="topic-form-field">
+              <label for="inputNewTopicKeywords" class="topic-form-label">Keywords and Phrases (comma-separated)</label>
+              <textarea id="inputNewTopicKeywords" class="form-input form-textarea" rows="2" placeholder="e.g. artificial intelligence, OpenAI, machine learning, neural networks"></textarea>
+              <span class="topic-form-hint">Separate multiple keywords or phrases with commas. Articles matching any of these keywords will be fetched.</span>
+            </div>
+
+            <!-- Source Checklist Section -->
+            <div class="topic-form-field topic-sources-selection-field">
+              <div class="topic-sources-header">
+                <label class="topic-form-label">Select Sources to Weave In</label>
+                <div class="topic-sources-quick-actions">
+                  <button type="button" id="btnSelectAllSources" class="source-action-link">Select All</button>
+                  <span class="source-action-sep">•</span>
+                  <button type="button" id="btnClearAllSources" class="source-action-link">Clear</button>
+                </div>
+              </div>
+              <div class="topic-source-search-wrap">
+                <input type="text" id="inputTopicSourceSearch" class="form-input source-filter-input" placeholder="Filter sources by name or domain...">
+              </div>
+              <div id="topicSourcesChecklist" class="topic-sources-checklist">
+                <!-- Dynamically populated checklist of available sources -->
+              </div>
+              <span class="topic-form-hint">Stories from selected sources will be automatically woven into the feed using fair-share quotas (7–10 stories).</span>
+            </div>
+
+            <!-- Inline Error Alert -->
+            <div id="newTopicFormError" class="topic-form-error" style="display: none;" role="alert"></div>
+
+            <button type="submit" id="newTopicSubmitBtn" class="form-btn topic-submit-btn">
+              <span id="newTopicBtnSpinner" class="btn-spinner" style="display: none;"></span>
+              <span id="newTopicBtnText">Create Topic</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- TAB 3: RSS Feeds & Sources Catalog -->
+        <div id="tabPanelSources" class="modal-tab-panel" role="tabpanel" aria-labelledby="tabBtnSources" style="display: none;">
+          <div class="sources-panel-content">
+            <!-- Add New Source Form -->
+            <form id="addNewSourceForm" class="source-add-form">
+              <div class="topic-form-header">
+                <span class="topic-form-title">Add Brand New Source</span>
+                <span class="topic-form-subtitle">Add any direct RSS or Atom feed URL to your sources library.</span>
+              </div>
+
+              <div class="source-form-inputs">
+                <div class="topic-input-group">
+                  <label for="inputNewSourceName" class="topic-form-label">Source / Publication Name</label>
+                  <input type="text" id="inputNewSourceName" class="form-input" placeholder="e.g. Ars Technica, Polygon" required>
+                </div>
+                <div class="topic-input-group">
+                  <label for="inputNewSourceUrl" class="topic-form-label">RSS / Atom Feed URL</label>
+                  <input type="url" id="inputNewSourceUrl" class="form-input" placeholder="https://arstechnica.com/feed/" required>
+                </div>
+              </div>
+
+              <!-- Inline Error Alert -->
+              <div id="newSourceFormError" class="topic-form-error" style="display: none;" role="alert"></div>
+
+              <button type="submit" id="newSourceSubmitBtn" class="form-btn source-submit-btn">
+                <span id="newSourceBtnSpinner" class="btn-spinner" style="display: none;"></span>
+                <span id="newSourceBtnText">+ Add Source to Library</span>
+              </button>
+            </form>
+
+            <!-- Sources Catalog List -->
+            <div class="sources-catalog-section">
+              <div class="sources-catalog-header">
+                <div class="sources-catalog-title-wrap">
+                  <span class="topic-form-title">Available Sources Library</span>
+                  <span id="sourcesCountBadge" class="sources-count-badge">0 sources</span>
+                </div>
+                <input type="text" id="inputSourceCatalogSearch" class="form-input source-filter-input" placeholder="Search catalog...">
+              </div>
+              <div id="sourcesCatalogList" class="sources-catalog-list">
+                <!-- Dynamically populated list of all available sources -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: Local Edition Configuration Section -->
+        <div id="tabPanelLocal" class="modal-tab-panel" role="tabpanel" aria-labelledby="tabBtnLocal" style="display: none;">
+          <div class="local-edition-section">
+            <div class="local-edition-header">
+              <span class="topic-form-title">Local News Edition</span>
+            </div>
+            <p class="local-edition-desc">Configure your local city and province/region for local news tabs.</p>
+
+            <div class="local-edition-controls">
+              <div class="topic-form-field">
+                <label for="selectLocalPreset" class="topic-form-label">Location Preset</label>
+                <select id="selectLocalPreset" class="form-select topic-preset-select">
+                  <option value="Vancouver|British Columbia">Vancouver / British Columbia (Default - Instant Cache)</option>
+                  <option value="Toronto|Ontario">Toronto / Ontario</option>
+                  <option value="Montreal|Quebec">Montreal / Quebec</option>
+                  <option value="Calgary|Alberta">Calgary / Alberta</option>
+                  <option value="Ottawa|Ontario">Ottawa / Ontario</option>
+                  <option value="Edmonton|Alberta">Edmonton / Alberta</option>
+                  <option value="Seattle|Washington">Seattle / Washington</option>
+                  <option value="New York|New York">New York / New York</option>
+                  <option value="London|United Kingdom">London / United Kingdom</option>
+                  <option value="CUSTOM">✏️ Custom Location...</option>
+                </select>
+              </div>
+
+              <div class="local-edition-inputs">
+                <div class="topic-input-group">
+                  <label for="inputLocalCity" class="topic-form-label">City Name</label>
+                  <input type="text" id="inputLocalCity" class="form-input" placeholder="e.g. Vancouver" value="Vancouver">
+                </div>
+                <div class="topic-input-group">
+                  <label for="inputLocalRegion" class="topic-form-label">Province / State / Region</label>
+                  <input type="text" id="inputLocalRegion" class="form-input" placeholder="e.g. British Columbia" value="British Columbia">
+                </div>
+              </div>
+
+              <button type="button" id="saveLocalBtn" class="form-btn local-save-btn">Update Local Edition</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <div class="modal-footer-left">
+          <button id="resetTopicsBtn" class="btn-icon" style="color: #dc2626;">Reset Defaults</button>
+          <button id="modalExportTopicsBtn" class="btn-icon" title="Export all topics, RSS sources, and paywall rules as a single JSON file">Export JSON</button>
+        </div>
+        <button id="saveTopicsBtn" class="form-btn topic-save-btn">Save & Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Strategy Switcher Modal -->
+  <div id="strategySwitcherModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="switcherTitle">
+    <div class="modal-content strategy-switcher-content">
+      <div class="modal-header">
+        <div class="strategy-switcher-header-info">
+          <img id="switcherFavicon" class="source-favicon" src="" alt="" width="18" height="18">
+          <h2 id="switcherTitle" class="modal-title">Change Bypass Rule</h2>
+        </div>
+        <button id="closeSwitcherBtn" class="modal-close" aria-label="Close dialog">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="strategy-switcher-desc">
+          Select bypass strategy for <strong id="switcherDomainName">domain.com</strong>.<br>
+          <span class="subtle-note">Changes auto-save to your rules and take effect immediately.</span>
+        </p>
+
+        <div id="strategyOptionsList" class="strategy-options-list"></div>
+      </div>
+
+      <div class="modal-footer">
+        <span id="switcherCurrentStatus" class="switcher-status-note"></span>
+        <button id="closeSwitcherDoneBtn" class="btn-icon">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Article URL Opener & Bypass Modal -->
+  <div id="quickUrlModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="quickUrlTitle">
+    <div class="modal-content quick-url-modal-content">
+      <div class="modal-header">
+        <div class="modal-header-title-group">
+          <span class="guide-header-icon">🔗</span>
+          <h2 id="quickUrlTitle" class="modal-title">Open Article URL</h2>
+        </div>
+        <button id="closeQuickUrlBtn" class="modal-close" aria-label="Close dialog">&times;</button>
+      </div>
+
+      <form id="quickUrlForm" class="modal-body quick-url-body">
+        <p class="quick-url-desc">
+          Paste any news article URL to read it immediately with your choice of bypass tool.
+        </p>
+
+        <!-- URL Input Group with Paste Button -->
+        <div class="quick-url-field">
+          <label for="inputQuickUrl" class="quick-url-label">Article URL</label>
+          <div class="quick-url-input-box">
+            <input type="url" id="inputQuickUrl" class="form-input quick-url-input" placeholder="https://www.nytimes.com/... or wsj.com/..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+            <button type="button" id="quickUrlPasteBtn" class="quick-url-paste-btn" title="Paste link from clipboard">
+              📋 Paste
+            </button>
+            <button type="button" id="quickUrlClearBtn" class="quick-url-clear-btn" title="Clear input" style="display: none;">
+              &times;
+            </button>
+          </div>
+        </div>
+
+        <!-- Bypass Method Selector Dropdown -->
+        <div class="quick-url-field">
+          <label for="quickUrlStrategySelect" class="quick-url-label">Bypass Tool</label>
+          <select id="quickUrlStrategySelect" class="form-select quick-url-select">
+            <option value="" disabled selected>Select bypass tool to open...</option>
+            <option value="auto">Auto (Best tool for domain)</option>
+            <option value="removepaywall">RemovePaywall</option>
+            <option value="unwall">UnWall (unwall.app)</option>
+            <option value="freedium">Freedium Mirror (Medium, NYT, WaPo, Bloomberg, Reuters, Economist, FT)</option>
+            <option value="archive_is">Archive.is</option>
+            <option value="smry">SMRY.ai</option>
+            <option value="reader">Reader Mode (No-JS / Bot)</option>
+            <option value="wayback">Wayback Machine</option>
+            <option value="direct">Direct (Original Link)</option>
+          </select>
+        </div>
+
+        <!-- Inline Feedback / Error -->
+        <div id="quickUrlError" class="topic-form-error" style="display: none;" role="alert"></div>
+
+        <!-- Detected Domain Live Banner (updates dynamically) -->
+        <div id="quickUrlDomainBanner" class="quick-url-domain-banner" style="display: none;">
+          <div class="quick-url-domain-info">
+            <img id="quickUrlFavicon" class="source-favicon" src="" alt="" width="18" height="18">
+            <span id="quickUrlDomainName" class="quick-url-domain-name">nytimes.com</span>
+            <span id="quickUrlStrategyBadge" class="badge badge-bypassed">SMRY</span>
+          </div>
+          <span id="quickUrlRuleSourceTag" class="quick-url-rule-tag">Default Rule</span>
+        </div>
+
+        <!-- Remember Tool Checkbox -->
+        <div class="quick-url-remember-wrap">
+          <label class="quick-url-remember-label">
+            <input type="checkbox" id="quickUrlRememberCheck" class="menu-checkbox" checked>
+            <span>Remember tool choice as default for <strong id="quickUrlRememberDomain">this domain</strong></span>
+          </label>
+        </div>
+      </form>
+
+      <div class="modal-footer">
+        <button type="button" id="closeQuickUrlDoneBtn" class="form-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Toast Notification -->
+  <div id="appToast" class="toast" role="status" aria-live="polite">
+    <span id="toastMessage" class="toast-message"></span>
+    <a id="toastActionLink" class="toast-action-btn" target="_blank" rel="noopener noreferrer" style="display: none;">Open Article ↗</a>
+  </div>
+
+  <!-- Main ES Module Entry Point -->
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
