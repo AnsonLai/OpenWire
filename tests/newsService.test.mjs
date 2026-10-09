@@ -360,7 +360,7 @@ test('fetchTopHeadlines uses fresh client live cache instead of reading older st
   try {
     // Save fresh live articles in client cache (1 minute ago)
     saveLiveCache('TOP', [
-      { id: 'live-1', title: 'Fresh 1-Minute Live News', pubDate: new Date().toISOString() },
+      { id: 'live-1', title: 'Fresh 1-Minute Live News', originalUrl: 'https://example.com/fresh', pubDate: new Date().toISOString() },
     ]);
 
     // When loading without forceLive, it should serve the fresh client live cache
@@ -373,5 +373,4 @@ test('fetchTopHeadlines uses fresh client live cache instead of reading older st
     globalThis.fetch = originalFetch;
   }
 });
-
 

@@ -127,6 +127,8 @@ Built-in topics load fresh published snapshots or recent device data first. The 
 
 Custom feeds and topics are saved on the device and fetched using public RSS conversion services. Their availability still depends on those providers; the scheduled server-side snapshots cover the built-in feeds in `sync_news.py`.
 
+Reading and refreshing still work when browser storage is blocked. Sort and filter choices can then be kept only for the current session. Invalid saved headline records are skipped, and a browser cache failure falls back to the network.
+
 Every production build fingerprints its app files to create a new service-worker revision automatically. The worker keeps each app shell together, uses network-first news requests with an offline fallback, and picks up new app code on the next navigation without forcing a reload during a shared-link dialog or settings edit.
 
 ### Other Static Hosts (Cloudflare Pages, Netlify, Vercel, Nginx)

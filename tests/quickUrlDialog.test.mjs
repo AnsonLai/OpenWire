@@ -476,3 +476,18 @@ test('a refresh with no usable fallback keeps the current feed and clears loadin
   assert.equal(app.get('refreshIcon').classList.contains('spin'), false);
   assert.match(app.get('feedUpdateStatus').textContent, /Keeping your current headlines/);
 });
+
+test('blocked browser storage does not prevent startup or applying the locked-headline filter', () => {
+  const storage = {
+    getItem() { throw new Error('Storage access denied'); },
+    setItem() { throw new Error('Storage access denied'); },
+  };
+  const app = createApp({ storage });
+  assert.equal(vm.runInContext('state.hideLocked', app.context), false);
+  const card = app.get('lockedCard');
+  app.document.querySelectorAll = selector => selector === '.news-card--locked' ? [card] : [];
+  app.get('hideLockedCheckbox').checked = true;
+  app.get('hideLockedCheckbox').dispatch('change');
+  assert.equal(vm.runInContext('state.hideLocked', app.context), true);
+  assert.equal(card.classList.contains('news-card--hidden'), true);
+});

@@ -149,6 +149,21 @@ function parseTitle(rawTitle, fallbackSource) {
 
 export const LIVE_CACHE_PREFIX = 'openwire_live_cache_';
 
+// Old or interrupted caches can contain incomplete records. Keep usable entries
+// and normalize the link aliases used by RSS converters and older snapshots.
+function usableSavedArticles(value) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((article) => {
+    if (!article || typeof article.title !== 'string' || !article.title.trim()) return [];
+    const originalUrl = article.originalUrl || article.link || article.url;
+    try {
+      const url = new URL(originalUrl);
+      if (!['http:', 'https:'].includes(url.protocol)) return [];
+    } catch { return []; }
+    return [{ ...article, originalUrl }];
+  });
+}
+
 function getTopicFeeds(topicId, topicConfig = getTopicById(topicId) || TOPICS[topicId] || TOPICS.TOP) {
   return Array.isArray(topicConfig.sources) && topicConfig.sources.length
     ? getFeedsByIds(topicConfig.sources) : getFeedsForTopic(topicId);
@@ -166,8 +181,9 @@ function getFeedSignature(topicId) {
  * @param {Array<object>} articles 
  */
 export function saveLiveCache(topicId, articles, failedFeeds = []) {
-  if (typeof localStorage === 'undefined' || !topicId || !Array.isArray(articles) || articles.length === 0) return;
+  if (!topicId || !Array.isArray(articles) || articles.length === 0) return;
   try {
+    if (typeof localStorage === 'undefined') return;
     const key = `${LIVE_CACHE_PREFIX}${topicId.toUpperCase()}`;
     localStorage.setItem(key, JSON.stringify({
       timestamp: Date.now(),
@@ -187,14 +203,16 @@ export function saveLiveCache(topicId, articles, failedFeeds = []) {
  * @returns {{ timestamp: number, articles: Array<object> } | null}
  */
 export function getLiveCache(topicId) {
-  if (typeof localStorage === 'undefined' || !topicId) return null;
+  if (!topicId) return null;
   try {
+    if (typeof localStorage === 'undefined') return null;
     const key = `${LIVE_CACHE_PREFIX}${topicId.toUpperCase()}`;
     const raw = localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed.timestamp === 'number' && Array.isArray(parsed.articles) && parsed.articles.length > 0) {
-      return parsed;
+    const articles = usableSavedArticles(parsed?.articles);
+    if (parsed && Number.isFinite(parsed.timestamp) && parsed.timestamp > 0 && articles.length > 0) {
+      return { ...parsed, articles, failedFeeds: Array.isArray(parsed.failedFeeds) ? parsed.failedFeeds : [] };
     }
   } catch {
     return null;
@@ -313,8 +331,8 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
     try {
       const response = await fetch(filePath, { cache: 'no-cache', signal: AbortSignal.timeout(5000) });
       if (!response.ok) continue;
-      const data = await response.json();
-      if (!Array.isArray(data) || !data.length) continue;
+      const data = usableSavedArticles(await response.json());
+      if (!data.length) continue;
       const updatedAt = data.reduce((latest, article) =>
         Math.max(latest, Date.parse(article.fetchedAt || article.pubDate) || 0), 0);
       if (!fallback || updatedAt > fallback.updatedAt) fallback = { articles: data, updatedAt, failedFeeds: [] };

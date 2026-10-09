@@ -144,3 +144,41 @@ test('slow providers have a total timeout instead of hanging on each fallback', 
   await assert.rejects(fetchLiveFeedItems('https://example.com/slow.xml', 'SLOW', 60), /Could not load/);
   assert.ok(Date.now() - started < 500);
 });
+
+test('a damaged device cache keeps usable headlines and rejects broken records', async (t) => {
+  store.clear();
+  saveLiveCache('TOP', [{ title: 'Usable cached headline', originalUrl: story.link, pubDate: story.pubDate }]);
+  const cached = JSON.parse(store.get('openwire_live_cache_TOP'));
+  cached.articles.unshift(null, { title: 42 }, { title: 'Broken URL', originalUrl: 'not a URL' });
+  store.set('openwire_live_cache_TOP', JSON.stringify(cached));
+  t.mock.method(globalThis, 'fetch', async () => { throw new Error('No network needed'); });
+  const articles = await fetchTopHeadlines('TOP');
+  assert.deepEqual(articles.map(article => article.title), ['Usable cached headline']);
+});
+
+test('invalid cache metadata falls through to a healthy published snapshot', async (t) => {
+  store.clear();
+  saveLiveCache('TOP', [{ title: 'Invalid timestamp cache', originalUrl: story.link }]);
+  const cached = JSON.parse(store.get('openwire_live_cache_TOP'));
+  cached.timestamp = -1;
+  store.set('openwire_live_cache_TOP', JSON.stringify(cached));
+  assert.equal(getLiveCache('TOP'), null);
+  t.mock.method(globalThis, 'fetch', async () => json([
+    null, { title: 'Broken snapshot record', originalUrl: 'invalid' },
+    { ...story, originalUrl: story.link, fetchedAt: new Date().toISOString() },
+  ]));
+  const articles = await fetchTopHeadlines('TOP');
+  assert.deepEqual(articles.map(article => article.title), [story.title]);
+});
+
+test('an entirely damaged cache cannot suppress a healthy live feed', async (t) => {
+  store.clear();
+  saveLiveCache('TOP', [{ title: 'Will be damaged', originalUrl: story.link }]);
+  const cached = JSON.parse(store.get('openwire_live_cache_TOP'));
+  cached.articles = [null, {}];
+  store.set('openwire_live_cache_TOP', JSON.stringify(cached));
+  t.mock.method(globalThis, 'fetch', async input => String(input).startsWith('./')
+    ? json([], 404) : json({ status: 'ok', items: [story] }));
+  const articles = await fetchTopHeadlines('TOP');
+  assert.equal(articles[0].title, story.title);
+});

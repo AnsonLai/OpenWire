@@ -7,7 +7,7 @@
  */
 
 const CACHE_PREFIX = 'openwire-pwa-docs-';
-const CACHE_NAME = 'openwire-pwa-docs-6cf1315cd297eeee';
+const CACHE_NAME = 'openwire-pwa-docs-0a05ac7d0fcc68f8';
 const DATA_CACHE_NAME = CACHE_PREFIX + 'news';
 const STATIC_ASSETS = [
   '/OpenWire/',
@@ -74,14 +74,20 @@ self.addEventListener('fetch', (event) => {
   const cacheKey = event.request.mode === 'navigate' && isShell
     ? new URL('index.html', self.registration.scope).href : event.request;
   event.respondWith((async () => {
-    const cache = await caches.open(isShell ? CACHE_NAME : DATA_CACHE_NAME);
-    const saved = await cache.match(cacheKey, { ignoreSearch: true });
+    let cache;
+    let saved;
+    try {
+      cache = await caches.open(isShell ? CACHE_NAME : DATA_CACHE_NAME);
+      saved = await cache.match(cacheKey, { ignoreSearch: true });
+    } catch {
+      // Cache storage may be unavailable or damaged; the network still works.
+    }
     if (isShell && saved) return saved;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
     try {
       const response = await fetch(event.request, { signal: controller.signal });
-      if (response.ok) {
+      if (response.ok && cache) {
         event.waitUntil(cache.put(cacheKey, response.clone()).catch(() => {}));
       } else if (saved) {
         return saved;

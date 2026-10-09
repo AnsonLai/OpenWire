@@ -293,8 +293,8 @@ export function normalizeDomain(input) {
  * Loads custom domain overrides from localStorage.
  */
 function loadCustomOverrides() {
-  if (typeof localStorage === 'undefined') return {};
   try {
+    if (typeof localStorage === 'undefined') return {};
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw);
@@ -319,8 +319,8 @@ function loadCustomOverrides() {
  * Saves custom domain overrides to localStorage.
  */
 function saveCustomOverrides(overrides) {
-  if (typeof localStorage === 'undefined') return;
   try {
+    if (typeof localStorage === 'undefined') return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
   } catch (error) {
     console.error({ error }, 'Failed to save custom domain rules to localStorage');

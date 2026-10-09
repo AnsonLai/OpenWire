@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import { transformServiceWorker } from '../build.js';
 
 const source = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
-function createWorker({ saved, response = new Response('new'), error, keys = [], installError } = {}) {
+function createWorker({ saved, response = new Response('new'), error, keys = [], installError, cacheError, matchError } = {}) {
   const handlers = new Map();
   const deleted = [];
   const writes = [];
@@ -14,7 +14,10 @@ function createWorker({ saved, response = new Response('new'), error, keys = [],
   const opened = [];
   let installed = false;
   const cache = {
-    match: async (key) => typeof saved === 'function' ? saved(key) : saved,
+    match: async (key) => {
+      if (matchError) throw matchError;
+      return typeof saved === 'function' ? saved(key) : saved;
+    },
     put: async (key, value) => { writes.push({ key, value }); },
     addAll: async () => { if (installError) throw installError; },
   };
@@ -28,7 +31,7 @@ function createWorker({ saved, response = new Response('new'), error, keys = [],
       clients: { claim: async () => {} },
     },
     caches: {
-      open: async (name) => { opened.push(name); return cache; },
+      open: async (name) => { opened.push(name); if (cacheError) throw cacheError; return cache; },
       keys: async () => keys,
       delete: async (key) => deleted.push(key),
     },
@@ -68,6 +71,23 @@ test('a news server error falls back to the saved snapshot', async () => {
   const result = await worker.dispatch('fetch', { url: 'https://example.com/OpenWire/data/news_top.json', method: 'GET' });
   assert.equal(await result.text(), 'saved news');
   assert.equal(worker.writes.length, 0);
+});
+
+test('unavailable cache storage cannot block online navigation or news', async () => {
+  for (const url of ['https://example.com/OpenWire/', 'https://example.com/OpenWire/news.json']) {
+    const worker = createWorker({ cacheError: new Error('Cache storage unavailable') });
+    const result = await worker.dispatch('fetch', { url, method: 'GET', mode: url.endsWith('/') ? 'navigate' : 'cors' });
+    assert.equal(await result.text(), 'new');
+    assert.equal(worker.requests.length, 1);
+    assert.equal(worker.writes.length, 0);
+  }
+});
+
+test('a damaged cache index does not block a working news response', async () => {
+  const worker = createWorker({ matchError: new Error('Cache index unreadable') });
+  const result = await worker.dispatch('fetch', { url: 'https://example.com/OpenWire/news.json', method: 'GET' });
+  assert.equal(await result.text(), 'new');
+  assert.equal(worker.requests.length, 1);
 });
 
 test('successful news responses are cached within the worker lifetime', async () => {

@@ -58,9 +58,11 @@ let quickUrlReturnFocus = null;
 let headlinesRequestId = 0;
 let activeRefresh = null;
 let preferredSortOrder = null;
+let hideLockedPreference = false;
 try {
   const savedSort = localStorage.getItem(STORAGE_KEY_SORT_ORDER);
   if (['curated', 'newest', 'oldest'].includes(savedSort)) preferredSortOrder = savedSort;
+  hideLockedPreference = localStorage.getItem('news_hide_locked') === 'true';
 } catch { /* Use the topic default when storage is unavailable. */ }
 
 // Application State
@@ -71,7 +73,7 @@ const state = {
   displayedTopic: null,
   feedUpdatedAt: 0,
   sortOrder: preferredSortOrder || 'curated',
-  hideLocked: localStorage.getItem('news_hide_locked') === 'true',
+  hideLocked: hideLockedPreference,
   isLoading: false,
 };
 
@@ -2375,7 +2377,7 @@ function setupEventListeners() {
   elements.hideLockedCheckbox.checked = state.hideLocked;
   elements.hideLockedCheckbox.addEventListener('change', (e) => {
     state.hideLocked = e.target.checked;
-    localStorage.setItem('news_hide_locked', state.hideLocked);
+    try { localStorage.setItem('news_hide_locked', state.hideLocked); } catch { /* Apply the filter for this session. */ }
 
     // Toggle card visibility
     const lockedCards = document.querySelectorAll('.news-card--locked');
