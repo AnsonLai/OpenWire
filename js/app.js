@@ -141,6 +141,9 @@ const STRATEGY_DEFINITIONS = [
 const elements = {
   feedList: document.getElementById('feedList'),
   feedStatus: document.getElementById('feedStatus'),
+  filteredEmptyState: document.getElementById('filteredEmptyState'),
+  showLockedHeadlinesBtn: document.getElementById('showLockedHeadlinesBtn'),
+  retryFeedBtn: document.getElementById('retryFeedBtn'),
   feedUpdateStatus: document.getElementById('feedUpdateStatus'),
   pullRefreshStatus: document.getElementById('pullRefreshStatus'),
   feedSortSelect: document.getElementById('feedSortSelect'),
@@ -889,7 +892,7 @@ function renderFeed() {
   elements.feedList.innerHTML = '';
 
   if (state.articles.length === 0) {
-    if (elements.feedStatus) elements.feedStatus.textContent = 'No headlines available';
+    updateStatusCounter();
     elements.feedList.innerHTML = '<div class="state-desc" style="text-align: center; padding: 40px 16px;">No headlines available for this topic.</div>';
     return;
   }
@@ -1437,6 +1440,7 @@ function changeDomainStrategy(domainInput, newStrategy, triggerArticle = null) {
     }
     return art;
   });
+  updateStatusCounter();
 
   // If rules table is open, refresh it too
   if (elements.rulesModal && elements.rulesModal.classList.contains('open')) {
@@ -1481,11 +1485,27 @@ function showToast(htmlMessage, actionUrl = null, actionLabel = 'Open ↗') {
  * Updates the summary status counter above the headlines.
  */
 function updateStatusCounter() {
-  if (!elements.feedStatus) return;
   const total = state.articles.length;
   const locked = state.articles.filter((a) => a.status === 'locked').length;
-  const readable = total - locked;
-  elements.feedStatus.textContent = `${total} Headlines (${readable} accessible, ${locked} locked)`;
+  const showingCurrent = state.displayedTopic === state.currentTopic;
+  const shown = state.hideLocked ? total - locked : total;
+  if (elements.feedStatus) {
+    elements.feedStatus.hidden = !showingCurrent || !total;
+    elements.feedStatus.textContent = `${shown} headline${shown === 1 ? '' : 's'}${locked ? ` · ${locked} ${state.hideLocked ? 'hidden' : 'locked'}` : ''}`;
+  }
+  const allHidden = showingCurrent && total > 0 && shown === 0;
+  if (elements.filteredEmptyState) elements.filteredEmptyState.hidden = !allHidden;
+  if (showingCurrent && total > 0) elements.feedList.style.display = allHidden ? 'none' : 'flex';
+}
+
+function setHideLocked(enabled) {
+  state.hideLocked = enabled;
+  elements.hideLockedCheckbox.checked = enabled;
+  try { localStorage.setItem('news_hide_locked', enabled); } catch { /* Apply it for this session. */ }
+  document.querySelectorAll('.news-card--locked').forEach((card) => {
+    card.classList.toggle('news-card--hidden', enabled);
+  });
+  updateStatusCounter();
 }
 
 /**
@@ -1573,12 +1593,13 @@ async function loadHeadlines(topicId = state.currentTopic, options = {}) {
   const targetHash = '#' + topicId.toLowerCase();
   if (typeof window !== 'undefined' && window.location.hash !== targetHash) {
     const currentSearch = window.location.search || '';
-    history.replaceState(null, '', currentSearch + targetHash);
+    history[options.historyMode === 'push' ? 'pushState' : 'replaceState'](null, '', currentSearch + targetHash);
   }
 
   // Update dynamic document title for SEO, browser history & tabs
   const topicDef = getTopicById(topicId);
   const topicLabel = topicDef?.label || (topicId === 'TOP' ? 'Top Stories' : topicId);
+  if (elements.editorialHeading) elements.editorialHeading.textContent = topicLabel.toUpperCase();
   if (typeof document !== 'undefined') {
     document.title = `${topicLabel} | OpenWire News`;
   }
@@ -1588,9 +1609,11 @@ async function loadHeadlines(topicId = state.currentTopic, options = {}) {
     elements.topicsBar.querySelectorAll('.topic-pill').forEach((p) => {
       if (p.getAttribute('data-topic') === topicId) {
         p.classList.add('active');
-        if (!sameTopic) p.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        p.setAttribute('aria-current', 'page');
+        if (!sameTopic) p.scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ? 'auto' : 'smooth', inline: 'center', block: 'nearest' });
       } else {
         p.classList.remove('active');
+        p.removeAttribute('aria-current');
       }
     });
   }
@@ -1599,6 +1622,11 @@ async function loadHeadlines(topicId = state.currentTopic, options = {}) {
   elements.loadingState.style.display = keepVisible ? 'none' : 'block';
   elements.errorState.style.display = 'none';
   elements.feedList.style.display = keepVisible ? 'flex' : 'none';
+  if (keepVisible) updateStatusCounter();
+  else {
+    if (elements.filteredEmptyState) elements.filteredEmptyState.hidden = true;
+    if (elements.feedStatus) elements.feedStatus.hidden = true;
+  }
   if (elements.feedUpdateStatus) {
     elements.feedUpdateStatus.hidden = false;
     elements.feedUpdateStatus.textContent = options.forceLive ? 'Checking for newer headlines…' : 'Loading headlines…';
@@ -1728,19 +1756,21 @@ function renderTopicsBar() {
   if (!elements.topicsBar) return;
   const visible = getVisibleTopics();
 
-  // If current topic is no longer visible, fallback to the first visible topic
-  if (visible.length > 0 && !visible.some((t) => t.id === state.currentTopic)) {
-    state.currentTopic = visible[0].id;
-  }
+  const fallback = visible.length > 0 && !visible.some((t) => t.id === state.currentTopic)
+    ? visible[0].id : null;
 
   elements.topicsBar.innerHTML = '';
   visible.forEach((topic) => {
     const pill = document.createElement('button');
     pill.className = `topic-pill ${topic.id === state.currentTopic ? 'active' : ''}`;
     pill.setAttribute('data-topic', topic.id);
+    if (topic.id === state.currentTopic) pill.setAttribute('aria-current', 'page');
     pill.textContent = topic.label.toUpperCase();
     elements.topicsBar.appendChild(pill);
   });
+  // Selection and displayed articles must change together, including while a
+  // previous request is pending. Rendering the bar alone must not change state.
+  if (fallback) return loadHeadlines(fallback);
 }
 
 /**
@@ -1974,12 +2004,6 @@ function renderTopicsModalTable() {
         deleteCustomTopic(topic.id);
         renderTopicsModalTable();
         renderTopicsBar();
-
-        if (state.currentTopic === topic.id) {
-          const visible = getVisibleTopics();
-          const nextTopicId = visible[0] ? visible[0].id : 'TOP';
-          loadHeadlines(nextTopicId);
-        }
         showToast(`Removed topic "<strong>${topic.label}</strong>"`);
       });
 
@@ -2316,7 +2340,7 @@ function setupEventListeners() {
       elements.topicsBar.querySelectorAll('.topic-pill').forEach((p) => p.classList.remove('active'));
       btn.classList.add('active');
 
-      loadHeadlines(topic);
+      loadHeadlines(topic, { historyMode: 'push' });
     });
   }
 
@@ -2372,22 +2396,16 @@ function setupEventListeners() {
     refreshCurrentTopic();
   });
   setupPullToRefresh();
+  elements.retryFeedBtn?.addEventListener('click', () => refreshCurrentTopic());
 
   // Hide Locked Filter toggle
   elements.hideLockedCheckbox.checked = state.hideLocked;
   elements.hideLockedCheckbox.addEventListener('change', (e) => {
-    state.hideLocked = e.target.checked;
-    try { localStorage.setItem('news_hide_locked', state.hideLocked); } catch { /* Apply the filter for this session. */ }
-
-    // Toggle card visibility
-    const lockedCards = document.querySelectorAll('.news-card--locked');
-    lockedCards.forEach((card) => {
-      if (state.hideLocked) {
-        card.classList.add('news-card--hidden');
-      } else {
-        card.classList.remove('news-card--hidden');
-      }
-    });
+    setHideLocked(e.target.checked);
+  });
+  elements.showLockedHeadlinesBtn?.addEventListener('click', () => {
+    setHideLocked(false);
+    elements.feedList.querySelector?.('a[href]')?.focus();
   });
 
   // Open / Close Rules Modal
@@ -2539,6 +2557,7 @@ function setupEventListeners() {
         updateCardElement(updated);
         return updated;
       });
+      updateStatusCounter();
       renderRulesTable();
       showToast('✓ Reset all domain rules to factory defaults');
     }
@@ -2643,12 +2662,6 @@ function setupEventListeners() {
   if (elements.saveTopicsBtn && elements.topicsModal) {
     elements.saveTopicsBtn.addEventListener('click', () => {
       renderTopicsBar();
-
-      // If current topic is no longer visible, fallback to first visible topic
-      const visible = getVisibleTopics();
-      if (!visible.some((t) => t.id === state.currentTopic)) {
-        loadHeadlines(visible[0] ? visible[0].id : 'TOP');
-      }
 
       elements.topicsModal.classList.remove('open');
       showToast('✓ Topic preferences saved');
@@ -2775,7 +2788,7 @@ function setupEventListeners() {
         renderTopicsBar();
         elements.topicsModal.classList.remove('open');
 
-        loadHeadlines(newTopic.id);
+        loadHeadlines(newTopic.id, { historyMode: 'push' });
         const sourceInfo = selectedSources.length > 0 ? ` with ${selectedSources.length} RSS source(s)` : '';
         showToast(`✓ Added topic "<strong>${escapeHtml(newTopic.label)}</strong>"${sourceInfo}`);
       } catch (err) {
@@ -2870,26 +2883,24 @@ function setupEventListeners() {
         resetFeedsToDefault();
         updateLocalMenuLabels();
         renderTopicsModalTable();
-        renderTopicsBar();
-
-        const visible = getVisibleTopics();
-        if (!visible.some((t) => t.id === state.currentTopic)) {
-          loadHeadlines(visible[0] ? visible[0].id : 'TOP');
-        } else if (state.currentTopic === 'VANCOUVER' || state.currentTopic === 'BC') {
-          loadHeadlines(state.currentTopic);
-        }
+        const fallbackLoad = renderTopicsBar();
+        if (!fallbackLoad) loadHeadlines(state.currentTopic, { forceLive: true });
         showToast('✓ Reset topics and edition to factory defaults');
       }
     });
   }
 
   // Handle browser back / forward navigation via hashchange
-  window.addEventListener('hashchange', () => {
-    const hashTopicId = window.location.hash.replace(/^#/, '').toUpperCase();
-    if (hashTopicId && hashTopicId !== state.currentTopic && getTopicById(hashTopicId)) {
-      loadHeadlines(hashTopicId);
+  const navigateFromHistory = () => {
+    const topic = getInitialTopic();
+    if (topic !== state.currentTopic) loadHeadlines(topic);
+    else {
+      const targetHash = '#' + topic.toLowerCase();
+      if (window.location.hash !== targetHash) history.replaceState(null, '', (window.location.search || '') + targetHash);
     }
-  });
+  };
+  window.addEventListener('popstate', navigateFromHistory);
+  window.addEventListener('hashchange', navigateFromHistory);
 }
 
 // App Bootstrap

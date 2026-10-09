@@ -40,7 +40,20 @@ export const DEFAULT_TOPICS = [
 function loadCustomTopics() {
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY_CUSTOM) : null;
-    return raw ? JSON.parse(raw) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    const seen = new Set(DEFAULT_TOPICS.map((topic) => topic.id));
+    return parsed.flatMap((topic) => {
+      if (!topic || typeof topic.id !== 'string' || !topic.id.trim()
+        || typeof topic.label !== 'string' || !topic.label.trim()) return [];
+      const id = topic.id.toUpperCase();
+      if (seen.has(id)) return [];
+      seen.add(id);
+      return [{ ...topic, id, query: typeof topic.query === 'string' ? topic.query : '',
+        keywords: Array.isArray(topic.keywords) ? topic.keywords.filter((word) => typeof word === 'string') : parseCommaKeywords(typeof topic.query === 'string' ? topic.query : ''),
+        sources: Array.isArray(topic.sources) ? topic.sources.filter((source) => typeof source === 'string') : [],
+        url: typeof topic.url === 'string' ? topic.url : '' }];
+    });
   } catch {
     return [];
   }
@@ -52,7 +65,8 @@ function loadCustomTopics() {
 function loadHiddenTopicIds() {
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY_HIDDEN) : null;
-    return raw ? new Set(JSON.parse(raw)) : new Set();
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : []);
   } catch {
     return new Set();
   }
@@ -64,7 +78,8 @@ function loadHiddenTopicIds() {
 export function loadTopicOrder() {
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY_ORDER) : null;
-    return raw ? JSON.parse(raw) : null;
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : null;
   } catch {
     return null;
   }
@@ -116,8 +131,9 @@ export function getLocalEdition() {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY_LOCAL) : null;
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.city && parsed.region) {
-        return parsed;
+      if (parsed && typeof parsed.city === 'string' && parsed.city.trim()
+        && typeof parsed.region === 'string' && parsed.region.trim()) {
+        return { city: parsed.city.trim(), region: parsed.region.trim() };
       }
     }
   } catch {
@@ -292,6 +308,10 @@ export function getAllTopics() {
     });
   }
 
+  // A damaged visibility preference must not leave the app without a topic.
+  if (unsorted.length && !unsorted.some((topic) => topic.isVisible)) {
+    unsorted[0].isVisible = unsorted[0].visible = true;
+  }
   return unsorted;
 }
 

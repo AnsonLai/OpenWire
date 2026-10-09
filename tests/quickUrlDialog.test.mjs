@@ -24,10 +24,11 @@ function createStorage(initial = {}) {
   };
 }
 
-function createApp({ storage = createStorage(), query = '' } = {}) {
+function createApp({ storage = createStorage(), query = '', stubDomainChanges = true } = {}) {
   globalThis.localStorage = storage;
   const nodes = new Map();
   const documentListeners = new Map();
+  let generatedId = 0;
   const document = {
     title: 'OpenWire',
     activeElement: null,
@@ -42,6 +43,11 @@ function createApp({ storage = createStorage(), query = '' } = {}) {
       return event;
     },
     querySelectorAll: () => [],
+    createElement(tag) {
+      const node = this.getElementById('generated-' + ++generatedId);
+      node.tagName = tag.toUpperCase();
+      return node;
+    },
     getElementById(id) {
       if (!nodes.has(id)) {
         const classes = new Set();
@@ -50,6 +56,12 @@ function createApp({ storage = createStorage(), query = '' } = {}) {
         const node = {
           id, value: '', textContent: '', checked: false, disabled: false,
           style: {}, isConnected: true,
+          children: [],
+          get className() { return [...classes].join(' '); },
+          set className(value) { classes.clear(); value.split(/\s+/).filter(Boolean).forEach(c => classes.add(c)); },
+          set innerHTML(_value) { this.children = []; },
+          appendChild(child) { this.children.push(child); return child; },
+          scrollIntoView() {},
           options: [{ value: 'auto', textContent: '' }],
           classList: {
             add: (value) => classes.add(value),
@@ -63,7 +75,7 @@ function createApp({ storage = createStorage(), query = '' } = {}) {
           contains: (other) => other === node,
           getClientRects: () => node.style.display === 'none' ? [] : [{}],
           focus() { document.activeElement = node; },
-          querySelectorAll: () => [],
+          querySelectorAll(selector) { return this.children.filter(child => child.classList.contains(selector.slice(1))); },
           addEventListener(type, handler) {
             if (!listeners.has(type)) listeners.set(type, []);
             listeners.get(type).push(handler);
@@ -81,15 +93,40 @@ function createApp({ storage = createStorage(), query = '' } = {}) {
     },
   };
   const initialUrl = `https://openwire.test/${query}#TOP`;
+  const windowListeners = new Map();
   const window = {
     location: { href: initialUrl, pathname: '/', search: query, hash: '#TOP' },
     history: {
+      entries: [initialUrl], index: 0,
       replaceState(_state, _title, path) {
         const clean = new URL(path, initialUrl);
+        this.entries[this.index] = clean.href;
         Object.assign(window.location, { href: clean.href, search: clean.search, hash: clean.hash });
       },
+      pushState(_state, _title, path) {
+        this.entries.splice(++this.index);
+        this.replaceState(_state, _title, path);
+      },
+      back() {
+        if (this.index === 0) return;
+        this.index--;
+        this.replaceState(null, '', this.entries[this.index]);
+        window.dispatch('popstate');
+        window.dispatch('hashchange');
+      },
+      forward() {
+        if (this.index === this.entries.length - 1) return;
+        this.index++;
+        this.replaceState(null, '', this.entries[this.index]);
+        window.dispatch('popstate');
+        window.dispatch('hashchange');
+      },
     },
-    addEventListener() {},
+    addEventListener(type, handler) {
+      if (!windowListeners.has(type)) windowListeners.set(type, []);
+      windowListeners.get(type).push(handler);
+    },
+    dispatch(type) { for (const handler of windowListeners.get(type) || []) handler({}); },
   };
   const context = vm.createContext({ ...services, document, window, localStorage: storage,
     URL, URLSearchParams, console, navigator: {}, history: window.history, setTimeout, clearTimeout });
@@ -103,7 +140,7 @@ function createApp({ storage = createStorage(), query = '' } = {}) {
   ].map(get);
   document.activeElement = get('menuToggleBtn');
   // Keep domain writes real without rerendering the unrelated news feed.
-  context.changeDomainStrategy = (domain, strategy) => services.setDomainRule(domain, { strategy });
+  if (stubDomainChanges) context.changeDomainStrategy = (domain, strategy) => services.setDomainRule(domain, { strategy });
   context.setupEventListeners();
   return { context, window, document, storage, get,
     choose(value) {
@@ -490,4 +527,132 @@ test('blocked browser storage does not prevent startup or applying the locked-he
   app.get('hideLockedCheckbox').dispatch('change');
   assert.equal(vm.runInContext('state.hideLocked', app.context), true);
   assert.equal(card.classList.contains('news-card--hidden'), true);
+});
+
+test('hiding the active topic loads a visible replacement and ignores its pending response', async () => {
+  const app = createApp();
+  const rendered = stubFeedRendering(app);
+  let finishTop;
+  app.context.fetchTopHeadlines = async topic => {
+    if (topic === 'TOP') return new Promise(resolve => { finishTop = resolve; });
+    return [{ title: topic }];
+  };
+  const pending = app.context.loadHeadlines('TOP');
+  services.toggleTopicVisibility('TOP', false);
+  await app.context.renderTopicsBar();
+  finishTop([{ title: 'Stale top news' }]);
+  await pending;
+  assert.deepEqual(rendered, [['LATEST']]);
+  assert.equal(vm.runInContext('state.currentTopic', app.context), 'LATEST');
+  assert.equal(vm.runInContext('state.displayedTopic', app.context), 'LATEST');
+  assert.equal(app.get('editorialHeading').textContent, 'LATEST');
+  assert.equal(app.window.location.hash, '#latest');
+});
+
+test('deleting the active custom topic loads the replacement feed with matching heading and URL', async () => {
+  const app = createApp();
+  stubFeedRendering(app);
+  app.context.fetchTopHeadlines = async topic => [{ title: topic }];
+  const topic = services.addCustomTopic({ label: 'My news', url: 'https://example.com/feed' });
+  await app.context.loadHeadlines(topic.id);
+  services.deleteCustomTopic(topic.id);
+  await app.context.renderTopicsBar();
+  assert.equal(vm.runInContext('state.rawArticles[0].title', app.context), 'TOP');
+  assert.equal(vm.runInContext('state.displayedTopic', app.context), 'TOP');
+  assert.equal(app.get('editorialHeading').textContent, 'TOP STORIES');
+  assert.equal(app.window.location.hash, '#top');
+});
+
+test('topic clicks support Back and Forward; refreshing and invalid hashes add no extra entries', async () => {
+  const app = createApp({ query: '?debug=1' });
+  stubFeedRendering(app);
+  const fetched = [];
+  app.context.fetchTopHeadlines = async topic => { fetched.push(topic); return [{ title: topic }]; };
+  await app.context.loadHeadlines('TOP');
+  const clickTopic = async id => {
+    const pill = app.get(id);
+    pill.setAttribute('data-topic', id);
+    app.get('topicsBar').dispatch('click', { target: { closest: () => pill } });
+    await new Promise(setImmediate);
+  };
+  await clickTopic('BUSINESS');
+  await clickTopic('WORLD');
+  assert.equal(app.window.history.entries.length, 3);
+  app.window.history.back();
+  await new Promise(setImmediate);
+  assert.equal(vm.runInContext('state.displayedTopic', app.context), 'BUSINESS');
+  app.window.history.forward();
+  await new Promise(setImmediate);
+  assert.equal(vm.runInContext('state.displayedTopic', app.context), 'WORLD');
+  await app.context.refreshCurrentTopic();
+  assert.equal(app.window.history.entries.length, 3);
+  const beforeInvalid = fetched.length;
+  app.window.location.hash = '#removed-topic';
+  app.window.dispatch('hashchange');
+  assert.equal(app.window.location.hash, '#world');
+  assert.equal(fetched.length, beforeInvalid);
+  assert.equal(app.window.location.search, '?debug=1');
+});
+
+test('retry refreshes the selected topic in place and preserves sort and the shared-link dialog', async () => {
+  const app = createApp({ storage: createStorage({ news_sort_order: 'newest' }) });
+  stubFeedRendering(app);
+  app.context.console = { ...console, error() {} };
+  let reloads = 0;
+  app.window.location.reload = () => reloads++;
+  app.context.fetchTopHeadlines = async () => { throw Error('Temporary outage'); };
+  await app.context.loadHeadlines('BUSINESS');
+  assert.equal(app.get('errorState').style.display, 'block');
+  assert.equal(app.get('editorialHeading').textContent, 'BUSINESS');
+  app.context.openQuickUrlModal('https://bbc.com/story');
+  app.context.fetchTopHeadlines = async (topic, options) => {
+    assert.equal(topic, 'BUSINESS');
+    assert.equal(options.forceLive, true);
+    return sampleHeadlines;
+  };
+  app.get('retryFeedBtn').dispatch('click');
+  await app.context.refreshCurrentTopic();
+  assert.equal(reloads, 0);
+  assert.equal(app.get('errorState').style.display, 'none');
+  assert.equal(app.get('feedSortSelect').value, 'newest');
+  assert.equal(app.get('quickUrlModal').classList.contains('open'), true);
+});
+
+test('a fully filtered feed explains the blank view and can be restored with one click', () => {
+  const app = createApp();
+  const card = app.get('lockedCard');
+  card.classList.add('news-card--locked');
+  app.document.querySelectorAll = () => [card];
+  vm.runInContext('state.displayedTopic="TOP"; state.articles=[{status:"locked"},{status:"locked"}]', app.context);
+  app.get('hideLockedCheckbox').checked = true;
+  app.get('hideLockedCheckbox').dispatch('change');
+  assert.equal(app.get('filteredEmptyState').hidden, false);
+  assert.equal(app.get('feedList').style.display, 'none');
+  assert.equal(app.get('feedStatus').textContent, '0 headlines · 2 hidden');
+  app.get('showLockedHeadlinesBtn').dispatch('click');
+  assert.equal(app.get('filteredEmptyState').hidden, true);
+  assert.equal(app.get('hideLockedCheckbox').checked, false);
+  assert.equal(card.classList.contains('news-card--hidden'), false);
+  assert.equal(app.get('feedList').style.display, 'flex');
+  assert.equal(app.storage.getItem('news_hide_locked'), 'false');
+
+  app.context.setHideLocked(true);
+  vm.runInContext('state.articles[0].status="free"', app.context);
+  app.context.updateStatusCounter();
+  assert.equal(app.get('filteredEmptyState').hidden, true);
+  assert.equal(app.get('feedList').style.display, 'flex');
+  assert.equal(app.get('feedStatus').textContent, '1 headline · 1 hidden');
+});
+
+test('changing a rule updates filter feedback after the articles themselves have changed', () => {
+  const app = createApp({ stubDomainChanges: false });
+  app.context.updateCardElement = () => {};
+  app.context.showToast = () => {};
+  vm.runInContext('state.displayedTopic="TOP"; state.hideLocked=true; state.articles=[{title:"A story",domain:"wsj.com",originalUrl:"https://wsj.com/story",status:"locked"}]; state.rawArticles=[...state.articles]', app.context);
+  app.context.updateStatusCounter();
+  assert.equal(app.get('filteredEmptyState').hidden, false);
+  app.context.changeDomainStrategy('wsj.com', 'direct');
+  assert.equal(app.get('filteredEmptyState').hidden, true);
+  assert.equal(app.get('feedStatus').textContent, '1 headline');
+  assert.equal(app.get('feedList').style.display, 'flex');
 });

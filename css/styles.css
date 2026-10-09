@@ -126,6 +126,20 @@ body {
   padding-bottom: 60px;
 }
 
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ==========================================================================
    Header & Toolbar
    ========================================================================== */
@@ -1194,6 +1208,11 @@ body {
   background-color: var(--bg-surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
+}
+
+.state-container .btn-icon {
+  min-height: 44px;
+  padding: 10px 16px;
 }
 
 .state-title {
@@ -2440,6 +2459,12 @@ body {
   color: var(--text-secondary);
   font-size: 0.8rem;
   line-height: 1.5;
+}
+
+.feed-status {
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
 }
 
 .quick-url-hint {

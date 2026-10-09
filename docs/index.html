@@ -3,7 +3,7 @@
 <head>
   <base href="/OpenWire/">
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#10b981">
   <meta name="color-scheme" content="light dark">
 
@@ -247,14 +247,21 @@
     <!-- Loading State -->
     <div id="loadingState" class="state-container">
       <h2 class="state-title">Fetching Latest News</h2>
-      <p class="state-desc">Aggregating top headlines and checking domain rules...</p>
+      <p class="state-desc">Loading headlines for your selected topic…</p>
     </div>
 
     <!-- Error State -->
     <div id="errorState" class="state-container" style="display: none;">
       <h2 class="state-title" style="color: #dc2626;">Unable to Load Headlines</h2>
       <p id="errorMessage" class="state-desc"></p>
-      <button onclick="window.location.reload()" class="btn-icon" style="margin: 0 auto;">Try Again</button>
+      <button id="retryFeedBtn" type="button" class="btn-icon" style="margin: 0 auto;">Try Again</button>
+    </div>
+
+    <p id="feedStatus" class="feed-status" hidden></p>
+    <div id="filteredEmptyState" class="state-container" hidden>
+      <h2 class="state-title">All headlines are hidden</h2>
+      <p class="state-desc">Hide Locked is on, and every headline in this topic is currently marked locked.</p>
+      <button id="showLockedHeadlinesBtn" type="button" class="btn-icon" style="margin: 0 auto;">Show locked headlines</button>
     </div>
 
     <!-- Articles Feed List -->

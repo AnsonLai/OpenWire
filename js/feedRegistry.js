@@ -383,7 +383,20 @@ const STORAGE_KEY_CUSTOM_FEEDS = 'news_user_custom_feeds';
 export function loadCustomFeeds() {
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY_CUSTOM_FEEDS) : null;
-    return raw ? JSON.parse(raw) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    const seen = new Set();
+    return parsed.flatMap((feed) => {
+      if (!feed || typeof feed.id !== 'string' || !feed.id.trim()
+        || typeof feed.name !== 'string' || !feed.name.trim() || typeof feed.url !== 'string') return [];
+      try {
+        if (!['http:', 'https:'].includes(new URL(feed.url).protocol)) return [];
+      } catch { return []; }
+      if (seen.has(feed.id)) return [];
+      seen.add(feed.id);
+      return [{ ...feed, topics: Array.isArray(feed.topics) ? feed.topics.filter((topic) => typeof topic === 'string') : [],
+        maxArticles: Math.max(7, Math.min(10, Number(feed.maxArticles) || 8)), enabled: feed.enabled !== false }];
+    });
   } catch {
     return [];
   }
