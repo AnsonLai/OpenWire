@@ -11,15 +11,10 @@
 // Waterfall of CORS proxies for static hosting
 const PROXY_PROVIDERS = [
   {
-    name: 'corsproxy_io',
-    buildUrl: (target) => `https://corsproxy.io/?url=${encodeURIComponent(target)}`,
-    unwrap: (raw) => raw,
-  },
-  {
     name: 'allorigins_get',
     buildUrl: (target) => `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`,
     unwrap: (raw) => {
-      if (typeof raw === 'object' && raw?.contents) return raw.contents;
+      if (typeof raw === 'object' && typeof raw?.contents === 'string') return raw.contents;
       if (typeof raw === 'string') {
         try {
           const parsed = JSON.parse(raw);
@@ -50,13 +45,20 @@ const PROXY_PROVIDERS = [
 export async function fetchWithProxy(targetUrl, options = {}) {
   const timeoutMs = options.timeoutMs || 5000;
   const responseType = options.responseType || 'text';
+  const deadline = Date.now() + (options.totalTimeoutMs || timeoutMs * (PROXY_PROVIDERS.length + 1));
 
   let lastError = null;
 
-  for (const proxy of PROXY_PROVIDERS) {
+  const providers = options.directFirst === false ? PROXY_PROVIDERS : [
+    { name: 'direct', buildUrl: (target) => target, unwrap: (raw) => raw },
+    ...PROXY_PROVIDERS,
+  ];
+  for (const proxy of providers) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
     const proxyUrl = proxy.buildUrl(targetUrl);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const timeoutId = setTimeout(() => controller.abort(), Math.min(timeoutMs, remaining));
 
     try {
       const response = await fetch(proxyUrl, {
@@ -66,20 +68,20 @@ export async function fetchWithProxy(targetUrl, options = {}) {
         }
       });
 
-      clearTimeout(timeoutId);
-
       if (!response.ok) {
         lastError = new Error(`Proxy ${proxy.name} returned HTTP ${response.status}`);
         continue; // Try next proxy in waterfall
       }
 
-      const raw = responseType === 'json' ? await response.json() : await response.text();
-      const data = proxy.unwrap ? proxy.unwrap(raw) : raw;
+      const raw = await response.text();
+      const unwrapped = proxy.unwrap ? proxy.unwrap(raw) : raw;
+      const data = responseType === 'json' && typeof unwrapped === 'string' ? JSON.parse(unwrapped) : unwrapped;
       return { ok: true, data, status: response.status, proxy: proxy.name };
     } catch (err) {
-      clearTimeout(timeoutId);
       lastError = err;
       // Continue to next proxy in waterfall
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 

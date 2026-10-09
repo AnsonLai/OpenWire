@@ -2,11 +2,13 @@
  * sw.js
  * 
  * Progressive Web App Service Worker.
- * Uses Network-First strategy so code updates are received immediately,
- * falling back to offline cache when disconnected.
+ * Keeps each installed app shell together. News data uses network-first fetches
+ * with a bounded wait and an offline fallback.
  */
 
-const CACHE_NAME = 'headlines-pwa-docs-v8';
+const CACHE_PREFIX = 'openwire-pwa-docs-';
+const CACHE_NAME = 'openwire-pwa-docs-6cf1315cd297eeee';
+const DATA_CACHE_NAME = CACHE_PREFIX + 'news';
 const STATIC_ASSETS = [
   '/OpenWire/',
   '/OpenWire/index.html',
@@ -32,6 +34,7 @@ const STATIC_ASSETS = [
   '/OpenWire/icons/icon-maskable-192.png',
   '/OpenWire/icons/icon-maskable-512.png'
 ];
+const SHELL_URLS = new Set(STATIC_ASSETS.map((asset) => new URL(asset, self.registration.scope).href));
 
 // Install: pre-cache application shell and skip waiting immediately
 self.addEventListener('install', (event) => {
@@ -42,13 +45,13 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate: delete all older caches and take control of all clients immediately
+// Only clean this deployment's caches; other apps on the origin keep theirs.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
+          if (key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME && key !== DATA_CACHE_NAME) {
             return caches.delete(key);
           }
         })
@@ -57,27 +60,37 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: Network-First for local assets, Network-only for external APIs
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // External APIs or proxies are handled by network
-  if (url.origin !== location.origin) {
+  if (event.request.method !== 'GET' || url.origin !== location.origin || !url.href.startsWith(self.registration.scope)) {
     return;
   }
 
-  // Network-first: try network to get the freshest code, fallback to cache if offline
-  event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      })
-      .catch(() => caches.match(event.request, { ignoreSearch: true }))
-  );
+  const cleanUrl = new URL(url);
+  cleanUrl.search = '';
+  const isShell = SHELL_URLS.has(cleanUrl.href);
+  const cacheKey = event.request.mode === 'navigate' && isShell
+    ? new URL('index.html', self.registration.scope).href : event.request;
+  event.respondWith((async () => {
+    const cache = await caches.open(isShell ? CACHE_NAME : DATA_CACHE_NAME);
+    const saved = await cache.match(cacheKey, { ignoreSearch: true });
+    if (isShell && saved) return saved;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      const response = await fetch(event.request, { signal: controller.signal });
+      if (response.ok) {
+        event.waitUntil(cache.put(cacheKey, response.clone()).catch(() => {}));
+      } else if (saved) {
+        return saved;
+      }
+      return response;
+    } catch {
+      return saved || Response.error();
+    } finally {
+      clearTimeout(timeout);
+    }
+  })());
 });

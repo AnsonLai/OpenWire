@@ -12,13 +12,8 @@ let deferredInstallPrompt = null;
 export function initPWA() {
   // 1. Register Service Worker if supported
   if ('serviceWorker' in navigator) {
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
-        refreshing = true;
-        window.location.reload();
-      }
-    });
+    // New code is picked up on the next navigation. An automatic reload here
+    // interrupts shared-link dialogs and erases unfinished settings edits.
 
     window.addEventListener('load', async () => {
       try {

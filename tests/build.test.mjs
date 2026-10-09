@@ -19,6 +19,7 @@ import {
   transformNewsServiceJs,
   compileTarget,
   TARGETS,
+  calculateBuildRevision,
 } from '../build.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -110,7 +111,7 @@ const STATIC_ASSETS = [
 ];`;
 
   const transformed = transformServiceWorker(sampleSw, '/news_aggregator/', 'news_aggregator');
-  assert.ok(transformed.includes("const CACHE_NAME = 'headlines-pwa-news_aggregator-v8';"));
+  assert.ok(transformed.includes("const CACHE_NAME = 'openwire-pwa-news_aggregator-v22';"));
   assert.ok(transformed.includes("'/news_aggregator/'"));
   assert.ok(transformed.includes("'/news_aggregator/index.html'"));
   assert.ok(transformed.includes("'/news_aggregator/css/styles.css'"));
@@ -179,6 +180,14 @@ test('compileTarget generates complete root and subfolder distributions', () => 
 
   const manifest = JSON.parse(fs.readFileSync(path.join(tempTestDir, 'manifest.json'), 'utf-8'));
   assert.equal(manifest.start_url, '/news_aggregator/');
+
+  const worker = fs.readFileSync(path.join(tempTestDir, 'sw.js'), 'utf8');
+  const swSource = fs.readFileSync(path.join(projectRoot, 'sw.js'), 'utf8');
+  const revision = calculateBuildRevision(tempTestDir, swSource);
+  assert.match(worker, new RegExp(`openwire-pwa-test_subfolder-${revision}`));
+  assert.equal(calculateBuildRevision(tempTestDir, swSource), revision, 'Unchanged output must keep the same revision');
+  fs.appendFileSync(path.join(tempTestDir, 'js/app.js'), '\n// Changed shell fixture\n');
+  assert.notEqual(calculateBuildRevision(tempTestDir, swSource), revision, 'A shell edit must invalidate the worker cache');
 
   const robots = fs.readFileSync(path.join(tempTestDir, 'robots.txt'), 'utf-8');
   assert.ok(robots.includes('Sitemap: https://openwire.news/news_aggregator/sitemap.xml'));

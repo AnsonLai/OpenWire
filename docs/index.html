@@ -241,6 +241,9 @@
       </div>
     </div>
 
+    <p id="pullRefreshStatus" class="pull-refresh-status" role="status" aria-live="polite" hidden></p>
+    <p id="feedUpdateStatus" class="feed-update-status" role="status" aria-live="polite" hidden></p>
+
     <!-- Loading State -->
     <div id="loadingState" class="state-container">
       <h2 class="state-title">Fetching Latest News</h2>
@@ -532,19 +535,19 @@
   </div>
 
   <!-- Quick Article URL Opener & Bypass Modal -->
-  <div id="quickUrlModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="quickUrlTitle">
+  <div id="quickUrlModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="quickUrlTitle" aria-describedby="quickUrlDescription" aria-hidden="true" inert>
     <div class="modal-content quick-url-modal-content">
       <div class="modal-header">
         <div class="modal-header-title-group">
           <span class="guide-header-icon">🔗</span>
-          <h2 id="quickUrlTitle" class="modal-title">Open Article URL</h2>
+          <h2 id="quickUrlTitle" class="modal-title">Open article</h2>
         </div>
         <button id="closeQuickUrlBtn" class="modal-close" aria-label="Close dialog">&times;</button>
       </div>
 
-      <form id="quickUrlForm" class="modal-body quick-url-body">
-        <p class="quick-url-desc">
-          Paste any news article URL to read it immediately with your choice of bypass tool.
+      <form id="quickUrlForm" class="modal-body quick-url-body" novalidate>
+        <p id="quickUrlDescription" class="quick-url-desc">
+          Review the link and reading tool, then confirm below to continue.
         </p>
 
         <!-- URL Input Group with Paste Button -->
@@ -563,19 +566,20 @@
 
         <!-- Bypass Method Selector Dropdown -->
         <div class="quick-url-field">
-          <label for="quickUrlStrategySelect" class="quick-url-label">Bypass Tool</label>
-          <select id="quickUrlStrategySelect" class="form-select quick-url-select">
-            <option value="" disabled selected>Select bypass tool to open...</option>
-            <option value="auto">Auto (Best tool for domain)</option>
+          <label for="quickUrlStrategySelect" class="quick-url-label">Open with</label>
+          <select id="quickUrlStrategySelect" class="form-select quick-url-select" aria-describedby="quickUrlToolDescription quickUrlChoiceHint">
+            <option value="auto" selected>Auto (Use this site's default)</option>
             <option value="removepaywall">RemovePaywall</option>
             <option value="unwall">UnWall (unwall.app)</option>
-            <option value="freedium">Freedium Mirror (Medium, NYT, WaPo, Bloomberg, Reuters, Economist, FT)</option>
+            <option value="freedium">Freedium Mirror (Supported sites only)</option>
             <option value="archive_is">Archive.is</option>
             <option value="smry">SMRY.ai</option>
             <option value="reader">Reader Mode (No-JS / Bot)</option>
-            <option value="wayback">Wayback Machine</option>
+            <option value="wayback">Wayback Machine (Older snapshots)</option>
             <option value="direct">Direct (Original Link)</option>
           </select>
+          <p id="quickUrlToolDescription" class="quick-url-hint" aria-live="polite">Uses the saved or default tool for this site.</p>
+          <p id="quickUrlChoiceHint" class="quick-url-hint">Your last confirmed choice is selected next time.</p>
         </div>
 
         <!-- Inline Feedback / Error -->
@@ -594,14 +598,15 @@
         <!-- Remember Tool Checkbox -->
         <div class="quick-url-remember-wrap">
           <label class="quick-url-remember-label">
-            <input type="checkbox" id="quickUrlRememberCheck" class="menu-checkbox" checked>
-            <span>Remember tool choice as default for <strong id="quickUrlRememberDomain">this domain</strong></span>
+            <input type="checkbox" id="quickUrlRememberCheck" class="menu-checkbox">
+            <span>Also set this tool as the default for <strong id="quickUrlRememberDomain">this site</strong></span>
           </label>
         </div>
       </form>
 
       <div class="modal-footer">
-        <button type="button" id="closeQuickUrlDoneBtn" class="form-btn">Close</button>
+        <button type="button" id="closeQuickUrlDoneBtn" class="form-btn">Cancel</button>
+        <button type="submit" form="quickUrlForm" id="quickUrlOpenBtn" class="form-btn" disabled>Open article</button>
       </div>
     </div>
   </div>

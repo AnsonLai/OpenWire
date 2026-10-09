@@ -112,6 +112,10 @@
   padding: 0;
 }
 
+html, body {
+  overscroll-behavior-y: contain;
+}
+
 body {
   font-family: var(--font-family);
   background-color: var(--bg-app);
@@ -2414,6 +2418,68 @@ body {
   display: flex;
   flex-direction: column;
   gap: 5px;
+}
+
+.pull-refresh-status {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  padding: 10px 18px;
+  border-radius: 24px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.feed-update-status {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.quick-url-hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+#quickUrlModal .modal-footer {
+  gap: 12px;
+}
+
+#quickUrlModal .modal-footer .form-btn {
+  min-height: 44px;
+}
+
+#closeQuickUrlDoneBtn {
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+#quickUrlOpenBtn {
+  white-space: normal;
+}
+
+#quickUrlOpenBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#quickUrlModal .quick-url-domain-banner,
+#quickUrlModal .quick-url-domain-info {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#quickUrlModal .quick-url-domain-name {
+  overflow-wrap: anywhere;
 }
 
 .quick-url-label {

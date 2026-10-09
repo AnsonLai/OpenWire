@@ -15,6 +15,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -149,11 +150,12 @@ export function transformManifest(sourceJson, base) {
  * @param {string} cacheKey 
  * @returns {string} Transformed sw.js code
  */
-export function transformServiceWorker(sourceSw, base, cacheKey) {
+export function transformServiceWorker(sourceSw, base, cacheKey, revision = 'v22') {
   let sw = sourceSw;
 
   // 1. Update CACHE_NAME
-  const scopedCacheName = `headlines-pwa-${cacheKey}-v8`;
+  const scopedCacheName = `openwire-pwa-${cacheKey}-${revision}`;
+  sw = sw.replace(/const CACHE_PREFIX = '[^']+';/, `const CACHE_PREFIX = 'openwire-pwa-${cacheKey}-';`);
   sw = sw.replace(/const CACHE_NAME = '[^']+';/, `const CACHE_NAME = '${scopedCacheName}';`);
 
   // 2. Rewrite STATIC_ASSETS array
@@ -241,6 +243,16 @@ export function transformTopicRegistryJs(sourceTopicRegistryJs, base) {
   return js.replaceAll("'./data/", `'${base}data/`);
 }
 
+export function calculateBuildRevision(outDir, sourceSw) {
+  const jsDir = path.join(outDir, 'js');
+  const hash = createHash('sha256').update(sourceSw);
+  const files = ['index.html', 'manifest.json', 'css/styles.css', 'favicon.ico',
+    ...fs.readdirSync(path.join(outDir, 'icons')).sort().map((file) => `icons/${file}`),
+    ...fs.readdirSync(jsDir).filter((file) => file.endsWith('.js')).sort().map((file) => `js/${file}`)];
+  for (const file of files) hash.update(file).update(fs.readFileSync(path.join(outDir, file)));
+  return hash.digest('hex').slice(0, 16);
+}
+
 /**
  * Compiles a single distribution target.
  * @param {object} config - Configuration object
@@ -324,7 +336,6 @@ export function compileTarget({ name, base, outDir, cacheKey }) {
 
   // 6. Transform and write sw.js
   const swSrc = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf-8');
-  fs.writeFileSync(path.join(outDir, 'sw.js'), transformServiceWorker(swSrc, base, cacheKey), 'utf-8');
 
   // 7. Copy and transform JavaScript modules into js/
   const jsOutDir = path.join(outDir, 'js');
@@ -353,6 +364,11 @@ export function compileTarget({ name, base, outDir, cacheKey }) {
   // Transform topicRegistry.js
   const topicRegistryJsSrc = fs.readFileSync(path.join(__dirname, 'js', 'topicRegistry.js'), 'utf-8');
   fs.writeFileSync(path.join(jsOutDir, 'topicRegistry.js'), transformTopicRegistryJs(topicRegistryJsSrc, base), 'utf-8');
+
+  // Every shell change creates a new worker revision automatically. Do this
+  // after transforms so the fingerprint describes the actual deployed files.
+  const revision = calculateBuildRevision(outDir, swSrc);
+  fs.writeFileSync(path.join(outDir, 'sw.js'), transformServiceWorker(swSrc, base, cacheKey, revision), 'utf-8');
 
   console.info({ target: name }, `Successfully compiled "${name}" to ${outDir}`);
 }

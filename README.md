@@ -24,7 +24,7 @@ It fetches top headlines from Google News RSS and custom feeds, classifies publi
 4. **Instant Non-Blocking Performance**:
    * Headlines render immediately. Archive checks execute asynchronously in the background with strict timeouts so the UI never hangs.
 5. **Dual Operation Modes**:
-   * **Mode A (Pure Static / Client-Side)**: Runs 100% in the browser using a multi-proxy CORS waterfall (`corsproxy.io` -> `allorigins`).
+   * **Mode A (Pure Static / Client-Side)**: Runs in the browser using RSS conversion services and a CORS proxy fallback (`allorigins` -> `codetabs`).
    * **Mode B (Jamstack Pre-Generated)**: Includes `sync_news.py` to pre-generate headline feeds into `data/` and `news.json` on a schedule (e.g. GitHub Actions), providing instant loading with zero proxies needed.
 
 ---
@@ -110,14 +110,24 @@ node build.js --base=/my-subpath/ --out=dist/my-subpath
 ## Deployment
 
 ### GitHub Pages
-1. Build the production bundle into the `docs/` folder:
-   ```powershell
-   npm run build:docs
-   ```
-2. In your GitHub repository settings, navigate to **Pages**.
-3. Under **Build and deployment**, set **Source** to `Deploy from a branch`.
-4. Select your default branch (e.g. `main`) and set the folder to `/docs`.
-5. Save. Your PWA will be live at `https://<username>.github.io/<repo>/` (or custom domain).
+
+The included `.github/workflows/pages.yml` refreshes RSS on GitHub's runner and publishes the complete site on pushes to `master`, manual runs, and a schedule at 17 and 47 minutes past each hour. Scheduled runs may be delayed by GitHub.
+
+1. Push the code and workflow to the repository's default branch.
+2. In **Settings → Pages → Build and deployment**, choose **GitHub Actions** as the source.
+3. In **Actions**, open **Refresh news and publish Pages** and select **Run workflow** for the first refresh.
+
+The workflow uses the configured Pages base path, tests the app, fetches RSS without browser CORS restrictions, builds `docs/`, and deploys it directly. Scheduled refreshes use images supplied by the feeds and skip crawling article pages. It retains snapshots from the last successful run for any topics that temporarily fail. A complete feed outage fails the run and leaves the deployed site in place.
+
+For a manual deployment bundle, use `npm run build:docs`. Building does not publish the site.
+
+### Feed loading and app updates
+
+Built-in topics load fresh published snapshots or recent device data first. The menu **Refresh** action and pulling down at the top of the page both request live RSS, keeping the current topic and chosen sort order. Sort choices also survive page reloads. Overlapping refreshes share one request; if live RSS fails, older saved results cannot replace headlines already on screen. The status above the headlines shows the update time, unavailable sources, or when a failed refresh is showing saved news. A failing primary feed does not block the remaining publishers.
+
+Custom feeds and topics are saved on the device and fetched using public RSS conversion services. Their availability still depends on those providers; the scheduled server-side snapshots cover the built-in feeds in `sync_news.py`.
+
+Every production build fingerprints its app files to create a new service-worker revision automatically. The worker keeps each app shell together, uses network-first news requests with an offline fallback, and picks up new app code on the next navigation without forcing a reload during a shared-link dialog or settings edit.
 
 ### Other Static Hosts (Cloudflare Pages, Netlify, Vercel, Nginx)
 1. Run `npm run build:root` (or deploy root repository files directly).
@@ -125,13 +135,15 @@ node build.js --base=/my-subpath/ --out=dist/my-subpath
 
 ---
 
-## Optional: Automated Jamstack Sync (GitHub Actions)
+## Manual news refresh
 
-If you'd like your deployment to always have the freshest pre-computed `news.json` and category feeds ready:
+Run `python sync_news.py` to regenerate the built-in topic snapshots locally, then `npm run build:docs` to include them in a deployment bundle. Snapshot writes are atomic, unsuccessful topics keep their previous data, and a complete outage exits with an error.
 
-1. Run `python sync_news.py` locally or set up a simple GitHub Action on a 30-minute cron.
-2. The script checks Google News and configured feeds, resolves canonical URLs, runs archive checks, and outputs JSON files to `data/` and `news.json`.
-3. When the PWA opens, it automatically detects fresh JSON data and loads it in <50ms without hitting CORS proxies.
+Run the generator regression tests with:
+
+```powershell
+python -m unittest discover -s tests -p 'test_*.py'
+```
 
 ---
 

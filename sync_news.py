@@ -18,10 +18,15 @@ import os
 import json
 import re
 import html
+import tempfile
+import argparse
+from datetime import datetime, timezone
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
+
+SKIP_PAGE_IMAGES = False
 
 # Optional: decode Google News links if googlenewsdecoder is available
 try:
@@ -554,7 +559,9 @@ def process_single_google_item(item, topic_name: str, idx: int) -> dict:
         except Exception:
             pass
 
-    image_url = extract_og_image(canonical_url)
+    image_url = extract_image_from_xml_item(item)
+    if not image_url and not SKIP_PAGE_IMAGES:
+        image_url = extract_og_image(canonical_url)
     return build_article_record(topic_name, idx, title, source_name, canonical_url, pub_date, image_url)
 
 def extract_image_from_xml_item(item) -> str:
@@ -671,7 +678,7 @@ def process_direct_feed(feed_cfg: dict, topic_name: str) -> list:
         image_url = extract_image_from_xml_item(item)
 
         # Fallback to OG image extraction only if image is absent, limit allows, and not youtube
-        if not image_url and len(articles) < 3 and "youtube.com" not in link:
+        if not image_url and not SKIP_PAGE_IMAGES and len(articles) < 3 and "youtube.com" not in link:
             image_url = extract_og_image(link)
 
         art_id = f"art-{topic_name}-{feed_cfg['domain'][:4]}-{idx}"
@@ -681,7 +688,7 @@ def process_direct_feed(feed_cfg: dict, topic_name: str) -> list:
 
     # For articles still missing an image (e.g. Al Jazeera, Politico), extract OG image concurrently
     missing_imgs = [a for a in articles if not a.get("imageUrl") and "youtube.com" not in a.get("originalUrl", "")]
-    if missing_imgs:
+    if missing_imgs and not SKIP_PAGE_IMAGES:
         with ThreadPoolExecutor(max_workers=min(len(missing_imgs), 6)) as executor:
             future_to_art = {executor.submit(extract_og_image, a["originalUrl"]): a for a in missing_imgs}
             for fut in future_to_art:
@@ -891,7 +898,7 @@ def process_topic(topic_name: str, primary_url: str) -> list:
 
     # 4. Final enrichment pass for any remaining articles lacking an image
     missing_in_final = [a for a in final_articles if not a.get("imageUrl") and "youtube.com" not in a.get("originalUrl", "")]
-    if missing_in_final:
+    if missing_in_final and not SKIP_PAGE_IMAGES:
         print(f"[{topic_name.upper()}] Resolving images for {len(missing_in_final)} articles missing photos...")
         with ThreadPoolExecutor(max_workers=min(len(missing_in_final), 8)) as executor:
             future_to_art = {executor.submit(extract_page_image, a["originalUrl"]): a for a in missing_in_final}
@@ -907,26 +914,53 @@ def process_topic(topic_name: str, primary_url: str) -> list:
     print(f"[{topic_name.upper()}] Final woven feed: {len(final_articles)} articles ({img_count} photos).")
     return final_articles
 
+def write_json_atomic(path, data):
+    """Keep the last complete snapshot if a write is interrupted."""
+    target = os.path.abspath(path)
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=os.path.dirname(target), delete=False) as output:
+            temp_path = output.name
+            json.dump(data, output, indent=2)
+        os.replace(temp_path, target)
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
 def sync():
-    """Synchronizes all configured news topics and writes static JSON files."""
+    """Refresh snapshots, preserving previous files when a topic fails."""
     os.makedirs("data", exist_ok=True)
     all_results = {}
-
+    failed_topics = []
     for topic_name, primary_url in TOPICS.items():
-        articles = process_topic(topic_name, primary_url)
-        if articles:
-            topic_file = os.path.join("data", f"news_{topic_name}.json")
-            with open(topic_file, "w", encoding="utf-8") as f:
-                json.dump(articles, f, indent=2)
-            print(f"Saved {len(articles)} articles to {topic_file}")
-            all_results[topic_name] = articles
-
+        try:
+            articles = process_topic(topic_name, primary_url)
+        except Exception as error:
+            print(f"[{topic_name}] Refresh failed: {error}")
+            articles = []
+        if not articles:
+            failed_topics.append(topic_name)
+            continue
+        fetched_at = datetime.now(timezone.utc).isoformat()
+        for article in articles:
+            article["fetchedAt"] = fetched_at
+        topic_file = os.path.join("data", f"news_{topic_name}.json")
+        write_json_atomic(topic_file, articles)
+        print(f"Saved {len(articles)} articles to {topic_file}")
+        all_results[topic_name] = articles
     if "top" in all_results:
-        with open("news.json", "w", encoding="utf-8") as f:
-            json.dump(all_results["top"], f, indent=2)
-        print("Updated primary news.json")
+        write_json_atomic("news.json", all_results["top"])
+    if not all_results:
+        raise RuntimeError("No topics refreshed; preserving existing snapshots.")
+    if failed_topics:
+        print("Kept previous snapshots for: " + ", ".join(failed_topics))
+    print(f"Refreshed {len(all_results)} of {len(TOPICS)} topics.")
 
-    print("\nAll topics synchronized and woven successfully!")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Refresh OpenWire news snapshots.")
+    parser.add_argument('--skip-page-images', action='store_true', help='Use feed images without crawling article pages.')
+    SKIP_PAGE_IMAGES = parser.parse_args().skip_page_images
     sync()

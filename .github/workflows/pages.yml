@@ -1,0 +1,57 @@
+name: Refresh news and publish Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+  schedule:
+    - cron: '17,47 * * * *'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: openwire-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Keep the last successful snapshots for failed feeds
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/
+            news.json
+          key: news-snapshots-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: news-snapshots-
+      - run: npm test
+      - run: python -m unittest discover -s tests -p 'test_*.py'
+      - name: Fetch RSS on the runner, without browser CORS restrictions
+        run: python sync_news.py --skip-page-images
+      - uses: actions/configure-pages@v5
+        id: pages
+      - name: Build the configured Pages path
+        env:
+          PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: node build.js --target=docs --base="$PAGES_BASE_PATH/"
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+      - uses: actions/deploy-pages@v4
+        id: deployment

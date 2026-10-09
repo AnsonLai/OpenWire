@@ -149,18 +149,30 @@ function parseTitle(rawTitle, fallbackSource) {
 
 export const LIVE_CACHE_PREFIX = 'openwire_live_cache_';
 
+function getTopicFeeds(topicId, topicConfig = getTopicById(topicId) || TOPICS[topicId] || TOPICS.TOP) {
+  return Array.isArray(topicConfig.sources) && topicConfig.sources.length
+    ? getFeedsByIds(topicConfig.sources) : getFeedsForTopic(topicId);
+}
+
+function getFeedSignature(topicId) {
+  const topic = getTopicById(topicId) || TOPICS[topicId] || TOPICS.TOP;
+  return JSON.stringify({ url: topic.url, feeds: getTopicFeeds(topicId, topic).map((feed) => [feed.url, feed.maxArticles]) });
+}
+
 /**
  * Persists live fetched articles for a topic in localStorage so reloads never revert to old static files.
  * 
  * @param {string} topicId 
  * @param {Array<object>} articles 
  */
-export function saveLiveCache(topicId, articles) {
+export function saveLiveCache(topicId, articles, failedFeeds = []) {
   if (typeof localStorage === 'undefined' || !topicId || !Array.isArray(articles) || articles.length === 0) return;
   try {
     const key = `${LIVE_CACHE_PREFIX}${topicId.toUpperCase()}`;
     localStorage.setItem(key, JSON.stringify({
       timestamp: Date.now(),
+      signature: getFeedSignature(topicId),
+      failedFeeds,
       articles: articles.slice(0, 70),
     }));
   } catch {
@@ -202,260 +214,145 @@ export function getLiveCache(topicId) {
  * @returns {Promise<Array<object>>} List of article objects
  */
 export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
-  const { forceLive = false, maxStaleMinutes = 30 } = options;
+  const { forceLive = false, maxStaleMinutes = 30, onStatus = () => {} } = options;
   const topicConfig = getTopicById(topicId) || TOPICS[topicId] || TOPICS.TOP;
-  const isLatest = (topicId || '').toUpperCase() === 'LATEST' || (topicId || '').toUpperCase() === 'BREAKING';
+  const isLatest = ['LATEST', 'BREAKING'].includes(topicId.toUpperCase());
+  const maxAgeMs = maxStaleMinutes * 60 * 1000;
+  const configuredFeeds = getTopicFeeds(topicId, topicConfig);
+  const signature = getFeedSignature(topicId);
+  const existingCache = getLiveCache(topicId);
+  const clientCache = existingCache?.signature === signature ? existingCache : null;
+  const clientArticles = clientCache?.articles || [];
+  let liveAttempted = false;
+  let liveError = null;
 
-  // Helper to fetch live primary RSS feed and weave in configured secondary feeds
-  const fetchLiveStream = async (cachedArticles = []) => {
-    const feedUrl = topicConfig.url;
-
-    // Determine secondary feeds to weave in:
-    let secondaryConfigs = [];
-    if (Array.isArray(topicConfig.sources) && topicConfig.sources.length > 0) {
-      secondaryConfigs = getFeedsByIds(topicConfig.sources);
-    } else {
-      secondaryConfigs = getFeedsForTopic(topicId);
-    }
-
-    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-    // Case 1: Topic has a primary search/feed URL
-    if (feedUrl) {
-      const primaryArticles = await fetchLiveFeedItems(feedUrl, topicId);
-
-      // Borrow high-res images from cached articles if primary article lacks one
-      if (Array.isArray(cachedArticles) && cachedArticles.length > 0) {
-        for (let i = 0; i < primaryArticles.length; i++) {
-          if (!primaryArticles[i].imageUrl) {
-            const match = cachedArticles.find((c) => c.imageUrl && isDuplicateArticle(primaryArticles[i], c));
-            if (match) {
-              primaryArticles[i].imageUrl = match.imageUrl;
-              if ((!primaryArticles[i].originalUrl || primaryArticles[i].originalUrl.includes('news.google.com')) && match.originalUrl) {
-                primaryArticles[i].originalUrl = match.originalUrl;
-                primaryArticles[i].targetUrl = match.targetUrl || match.originalUrl;
-              }
-            }
-          }
-        }
-      }
-
-      if (secondaryConfigs && secondaryConfigs.length > 0) {
-        try {
-          const settled = await Promise.allSettled(
-            secondaryConfigs.map(async (cfg, idx) => {
-              if (idx > 0) await delay(idx * 120);
-              const items = await fetchLiveFeedItems(cfg.url, topicId, 4500);
-              return { feedConfig: cfg, articles: items };
-            })
-          );
-
-          const secondaryGroups = settled
-            .filter((r) => r.status === 'fulfilled' && r.value.articles && r.value.articles.length > 0)
-            .map((r) => r.value);
-
-          if (secondaryGroups.length > 0) {
-            const woven = weaveFeeds(primaryArticles, secondaryGroups, {
-              leadAnchorCount: isLatest ? 0 : 2,
-              maxConsecutivePerDomain: 2,
-              cadenceInterval: 2,
-              maxTotalArticles: 60,
-            });
-
-            // Re-check image enrichment from cache after weaving
-            if (Array.isArray(cachedArticles) && cachedArticles.length > 0) {
-              for (let i = 0; i < woven.length; i++) {
-                if (!woven[i].imageUrl) {
-                  const match = cachedArticles.find((c) => c.imageUrl && isDuplicateArticle(woven[i], c));
-                  if (match) {
-                    woven[i].imageUrl = match.imageUrl;
-                  }
-                }
-              }
-            }
-
-            const sortedWoven = isLatest ? sortArticlesByDate(woven, 'newest') : woven;
-            saveLiveCache(topicId, sortedWoven);
-            return sortedWoven;
-          }
-        } catch {
-          // Fallback to primary articles if secondary fetch fails
-        }
-      }
-
-      const sortedPrimary = isLatest ? sortArticlesByDate(primaryArticles, 'newest') : primaryArticles;
-      saveLiveCache(topicId, sortedPrimary);
-      return sortedPrimary;
-    }
-
-    // Case 2: Source-only topic (no search URL, only selected sources)
-    if (secondaryConfigs && secondaryConfigs.length > 0) {
-      const settled = await Promise.allSettled(
-        secondaryConfigs.map(async (cfg, idx) => {
-          if (idx > 0) await delay(idx * 120);
-          const items = await fetchLiveFeedItems(cfg.url, topicId, 4500);
-          return { feedConfig: cfg, articles: items };
-        })
-      );
-
-      const secondaryGroups = settled
-        .filter((r) => r.status === 'fulfilled' && r.value.articles && r.value.articles.length > 0)
-        .map((r) => r.value);
-
-      if (secondaryGroups.length > 0) {
-        const primaryAnchor = secondaryGroups[0].articles;
-        const restGroups = secondaryGroups.slice(1);
-        const woven = weaveFeeds(primaryAnchor, restGroups, {
-          leadAnchorCount: 1,
-          maxConsecutivePerDomain: 2,
-          cadenceInterval: 2,
-          maxTotalArticles: 60,
-        });
-        const sortedWoven = sortArticlesByDate(woven, 'newest');
-        saveLiveCache(topicId, sortedWoven);
-        return sortedWoven;
-      }
-    }
-
-    throw new Error(`No feed URL or sources configured for topic "${topicId}".`);
+  const formatArticles = (articles) => articles.map((article) => applyStrategyToArticle({
+    ...article, timeAgo: formatRelativeTime(article.pubDate), imageUrl: article.imageUrl || '',
+  }));
+  const report = (source, updatedAt, failedFeeds = [], refreshFailed = false) => {
+    onStatus({ source, updatedAt, failedFeeds, refreshFailed });
   };
 
-  // Check client-side persistent live cache from previous live fetches
-  const existingClientCache = getLiveCache(topicId);
-  const clientArticles = existingClientCache?.articles || [];
-
-  // 1. If explicit live refresh requested, attempt live stream immediately
-  if (forceLive) {
-    try {
-      return await fetchLiveStream(clientArticles);
-    } catch (liveErr) {
-      console.warn({ error: liveErr?.message, topicId }, 'Force-live fetch failed, attempting cached fallback');
-      if (clientArticles.length > 0) {
-        return clientArticles.map((art) => ({
-          ...art,
-          timeAgo: formatRelativeTime(art.pubDate),
-        }));
-      }
-    }
-  }
-
-  // 2. If client-side live cache exists and is fresh (< maxStaleMinutes old), use it!
-  if (existingClientCache && clientArticles.length > 0) {
-    const ageMs = Date.now() - (existingClientCache.timestamp || 0);
-    const maxAgeMs = maxStaleMinutes * 60 * 1000;
-    const isClientStale = ageMs > maxAgeMs;
-
-    if (!isClientStale) {
-      // Return fresh client-side live cache without ever touching old static files!
-      return clientArticles.map((art) => ({
-        ...art,
-        timeAgo: formatRelativeTime(art.pubDate),
-      }));
-    }
-
-    // Client cache is stale: attempt fresh live stream, falling back to client cache if network fails
-    try {
-      return await fetchLiveStream(clientArticles);
-    } catch (liveErr) {
-      console.warn({ error: liveErr?.message, topicId }, 'Live RSS fetch for stale client cache failed, using stored client cache');
-      return clientArticles.map((art) => ({
-        ...art,
-        timeAgo: formatRelativeTime(art.pubDate),
-      }));
-    }
-  }
-
-  // 3. Try loading pre-rendered topic data first (first-time visitor or storage empty)
-  const candidateFiles = [
-    topicConfig.file,
-    `/OpenWire/data/news_${topicId.toLowerCase()}.json`,
-  ];
-  if (topicId === 'TOP') {
-    candidateFiles.unshift('/OpenWire/news.json');
-  }
-
-  for (const filePath of candidateFiles) {
-    if (!filePath) continue;
-    try {
-      const localRes = await fetch(filePath, { cache: 'no-cache' });
-      if (localRes.ok) {
-        const localData = await localRes.json();
-        if (Array.isArray(localData) && localData.length > 0) {
-          // Check if static cache is stale (> maxStaleMinutes old)
-          const maxAgeMs = maxStaleMinutes * 60 * 1000;
-          const newestTime = localData.reduce((max, art) => {
-            const t = art.pubDate ? new Date(art.pubDate).getTime() : 0;
-            return !isNaN(t) && t > max ? t : max;
-          }, 0);
-          const isStale = newestTime > 0 && (Date.now() - newestTime > maxAgeMs);
-
-          // If static data is stale and topic has a live feed URL or sources, attempt live RSS first!
-          if (isStale && !forceLive && (topicConfig.url || (Array.isArray(topicConfig.sources) && topicConfig.sources.length > 0))) {
-            try {
-              return await fetchLiveStream(localData);
-            } catch (liveErr) {
-              console.warn({ error: liveErr?.message, topicId }, 'Live RSS fetch for stale cache failed, falling back to static file');
-            }
-          }
-
-          const formattedList = localData.map((art) => {
-            const formatted = {
-              ...art,
-              timeAgo: formatRelativeTime(art.pubDate),
-              imageUrl: art.imageUrl || '',
-            };
-            return applyStrategyToArticle(formatted);
-          });
-
-          // If user has assigned custom feeds to this topic, weave them into the pre-rendered pool
-          let listToReturn = formattedList;
-          const customConfigs = getCustomFeedsForTopic(topicId);
-          if (customConfigs && customConfigs.length > 0) {
-            try {
-              const settled = await Promise.allSettled(
-                customConfigs.map(async (cfg) => {
-                  const items = await fetchLiveFeedItems(cfg.url, topicId, 4500);
-                  return { feedConfig: cfg, articles: items };
-                })
-              );
-              const customGroups = settled
-                .filter((r) => r.status === 'fulfilled' && r.value.articles && r.value.articles.length > 0)
-                .map((r) => r.value);
-
-              if (customGroups.length > 0) {
-                listToReturn = weaveFeeds(formattedList, customGroups, {
-                  leadAnchorCount: isLatest ? 0 : 2,
-                  maxConsecutivePerDomain: 2,
-                  cadenceInterval: 2,
-                  maxTotalArticles: 60,
-                });
-              }
-            } catch {
-              // fallback to static list
-            }
-          }
-
-          return isLatest ? sortArticlesByDate(listToReturn, 'newest') : listToReturn;
+  // Every source gets a chance even when the primary feed is unavailable.
+  const fetchLiveStream = async (cachedArticles = []) => {
+    liveAttempted = true;
+    const configs = [
+      ...(topicConfig.url ? [{ name: 'Primary feed', url: topicConfig.url, primary: true }] : []),
+      ...configuredFeeds,
+    ].filter((cfg, index, all) => all.findIndex((other) => other.url === cfg.url) === index);
+    if (!configs.length) throw new Error(`No feed URL or sources configured for topic "${topicId}".`);
+    const settled = new Array(configs.length);
+    let next = 0;
+    // Limit bursts against public providers while fetching independent sources.
+    await Promise.all(Array.from({ length: Math.min(4, configs.length) }, async () => {
+      while (next < configs.length) {
+        const index = next++;
+        const config = configs[index];
+        try {
+          const articles = await fetchLiveFeedItems(config.url, topicId, 4500);
+          settled[index] = { config, articles };
+        } catch (error) {
+          settled[index] = { config, error: error.message };
         }
       }
-    } catch {
-      // try next file path
+    }));
+    const available = settled.filter((result) => result.articles?.length);
+    const failed = settled.filter((result) => result.error).map((result) => ({
+      name: result.config.name, error: result.error,
+    }));
+    if (!available.length) {
+      throw new Error('RSS sources are unavailable right now. Please retry shortly. ' + (failed[0]?.error || ''));
     }
+    const primary = available.find((result) => result.config.primary);
+    const groups = available.filter((result) => !result.config.primary).map((result) => ({
+      feedConfig: result.config, articles: result.articles,
+    }));
+    let articles = weaveFeeds(primary?.articles || [], groups, {
+      leadAnchorCount: isLatest ? 0 : 2, maxConsecutivePerDomain: 2,
+      cadenceInterval: 2, maxTotalArticles: 60,
+    });
+    for (const article of articles) {
+      const match = cachedArticles.find((saved) => isDuplicateArticle(article, saved));
+      if (match) {
+        if (!article.imageUrl) article.imageUrl = match.imageUrl || '';
+        if (article.originalUrl?.includes('news.google.com') && match.originalUrl && !match.originalUrl.includes('news.google.com')) {
+          article.originalUrl = match.originalUrl;
+          Object.assign(article, applyStrategyToArticle(article));
+        }
+      }
+    }
+    articles = formatArticles(isLatest ? sortArticlesByDate(articles, 'newest') : articles);
+    if (getFeedSignature(topicId) === signature) saveLiveCache(topicId, articles, failed);
+    report('live', Date.now(), failed);
+    return articles;
+  };
+
+  const tryLive = async (saved = []) => {
+    try { return await fetchLiveStream(saved); }
+    catch (error) { liveError = error; return null; }
+  };
+
+  let fallback = clientArticles.length ? { articles: clientArticles, updatedAt: clientCache.timestamp, failedFeeds: clientCache.failedFeeds } : null;
+  if (forceLive) {
+    const live = await tryLive(clientArticles);
+    if (live) return live;
+  } else if (clientArticles.length && Date.now() - clientCache.timestamp <= maxAgeMs) {
+    report('saved', clientCache.timestamp, clientCache.failedFeeds);
+    return formatArticles(clientArticles);
   }
 
-  // 4. Fallback: Fetch live primary feed via multi-provider RSS waterfall if not already attempted
-  return await fetchLiveStream(clientArticles);
+  // Pages snapshots can be newer than a device's stored feed, including when
+  // the public RSS services are unavailable. Try them before refreshing live.
+  const candidateFiles = [topicConfig.file, `/OpenWire/data/news_${topicId.toLowerCase()}.json`];
+  if (topicId === 'TOP') candidateFiles.unshift('/OpenWire/news.json');
+  const changedPrimary = TOPICS[topicId] && topicConfig.url !== TOPICS[topicId].url;
+  const customized = getCustomFeedsForTopic(topicId).length > 0
+    || Array.isArray(topicConfig.sources) && topicConfig.sources.length > 0;
+  for (const filePath of new Set(candidateFiles.filter(Boolean))) {
+    if (topicConfig.isCustom || changedPrimary) break;
+    try {
+      const response = await fetch(filePath, { cache: 'no-cache', signal: AbortSignal.timeout(5000) });
+      if (!response.ok) continue;
+      const data = await response.json();
+      if (!Array.isArray(data) || !data.length) continue;
+      const updatedAt = data.reduce((latest, article) =>
+        Math.max(latest, Date.parse(article.fetchedAt || article.pubDate) || 0), 0);
+      if (!fallback || updatedAt > fallback.updatedAt) fallback = { articles: data, updatedAt, failedFeeds: [] };
+      if (!forceLive && !customized && updatedAt && Date.now() - updatedAt <= maxAgeMs) {
+        report('saved', fallback.updatedAt);
+        const articles = formatArticles(fallback.articles);
+        return isLatest ? sortArticlesByDate(articles, 'newest') : articles;
+      }
+      // Topic snapshots and news.json are alternate copies of the same feed.
+      // Once a usable snapshot is found, avoid downloading it a second time.
+      break;
+    } catch {
+      // Continue to the next snapshot when a file is missing or unreadable.
+    }
+  }
+  if (!liveAttempted) {
+    const live = await tryLive(fallback?.articles || []);
+    if (live) return live;
+  }
+  if (fallback) {
+    report('saved', fallback.updatedAt, fallback.failedFeeds, !!liveError);
+    const articles = formatArticles(fallback.articles);
+    return isLatest ? sortArticlesByDate(articles, 'newest') : articles;
+  }
+  throw liveError || new Error('No headlines are available. Please retry shortly.');
 }
 
 /**
  * Normalizes an RSS item across multiple provider formats (feed2json, rss2json).
  */
-export function normalizeFeedItem(item, topicId, index) {
+export function normalizeFeedItem(item, topicId, index, feedTitle = '') {
   const link = item.url || item.link || '';
   const rawTitle = item.title || '';
-  const pubDate = item.date_published || item.pubDate || new Date().toISOString();
+  const rawDate = item.date_published || item.pubDate || '';
+  const pubDate = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(rawDate)
+    ? rawDate.replace(' ', 'T') + 'Z' : rawDate;
   const authorName = (typeof item.author === 'string' ? item.author : item.author?.name) || '';
-  const { title, source } = parseTitle(rawTitle, authorName);
+  const { title, source } = parseTitle(rawTitle, feedTitle || authorName);
 
   let domain = '';
   if (source && source.includes('.') && !source.includes(' ')) {
@@ -510,88 +407,69 @@ export function normalizeFeedItem(item, topicId, index) {
   return applyStrategyToArticle(baseArticle);
 }
 
-/**
- * Fetches RSS feed items through an automated converter waterfall:
- * 1. api.rss2json.com (reliable CORS-enabled public API)
- * 2. feed2json.org (secondary fallback)
- * 
- * @param {string} feedUrl 
- * @param {string} [topicId='CUSTOM']
- * @param {number} [timeoutMs=6000]
- * @returns {Promise<Array<object>>}
- */
-export async function fetchLiveFeedItems(feedUrl, topicId = 'CUSTOM', timeoutMs = 6000) {
-  // Provider 1: api.rss2json.com
-  try {
-    const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`, {
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.status === 'ok' && Array.isArray(data.items) && data.items.length > 0) {
-        return data.items.map((item, idx) => normalizeFeedItem(item, topicId, idx));
-      }
-    }
-  } catch (error) {
-    console.warn({ error: error?.message, feedUrl }, 'rss2json attempt failed, falling back to feed2json');
-  }
+const pendingFeeds = new Map();
 
-  // Provider 2: feed2json.org
+async function fetchFeedPayload(feedUrl, timeoutMs) {
+  let parsed;
+  try { parsed = new URL(feedUrl); } catch { throw new Error('Please enter a valid RSS or Atom feed URL.'); }
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Feed URLs must use HTTP or HTTPS.');
+  const deadline = Date.now() + timeoutMs;
+  let failure = '';
   try {
-    const res = await fetch(`https://feed2json.org/convert?url=${encodeURIComponent(feedUrl)}`, {
-      signal: AbortSignal.timeout(timeoutMs),
+    const response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`, {
+      signal: AbortSignal.timeout(Math.max(1, Math.floor(timeoutMs * 0.7))),
     });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data.items) && data.items.length > 0) {
-        return data.items.map((item, idx) => normalizeFeedItem(item, topicId, idx));
-      }
-    }
-  } catch (error) {
-    console.warn({ error: error?.message, feedUrl }, 'feed2json attempt failed');
-  }
+    if (!response.ok) throw new Error(`RSS provider returned HTTP ${response.status}.`);
+    const data = await response.json();
+    if (data.status !== 'ok') throw new Error(data.message || 'RSS provider could not read this feed.');
+    if (Array.isArray(data.items) && data.items.length) return { items: data.items, title: data.feed?.title || '' };
+    failure = 'This feed returned no articles.';
+  } catch (error) { failure = error.message; }
 
-  throw new Error('Unable to find any headlines for this topic feed. Please verify the keywords or try another search.');
+  // This converter does not allow browser CORS requests itself. Fetch its JSON
+  // through the same proxy utility used elsewhere, within the remaining budget.
+  const remaining = deadline - Date.now();
+  if (remaining > 0) {
+    const fallback = await fetchWithProxy(`https://feed2json.org/convert?url=${encodeURIComponent(feedUrl)}`, {
+      responseType: 'json', timeoutMs: Math.max(1, Math.floor(remaining / 2)),
+      totalTimeoutMs: remaining, directFirst: false,
+    });
+    if (fallback.ok && Array.isArray(fallback.data?.items) && fallback.data.items.length) {
+      return { items: fallback.data.items, title: fallback.data.title || '' };
+    }
+  }
+  throw new Error(`Could not load this RSS feed. ${failure || 'The feed or provider may be unavailable.'}`);
 }
 
-/**
- * Verifies if an RSS feed URL yields at least 1 valid article.
- * Used for live validation to reject invalid topics before adding them.
- * 
- * @param {string} feedUrl 
- * @returns {Promise<{ ok: boolean, count: number, error?: string }>}
- */
-export async function verifyFeed(feedUrl) {
-  if (!feedUrl) {
-    return { ok: false, count: 0, error: 'Feed URL is missing.' };
+/** Fetch feed content once per concurrent URL; normalize for each requesting topic. */
+export async function fetchLiveFeedItems(feedUrl, topicId = 'CUSTOM', timeoutMs = 6000) {
+  if (!pendingFeeds.has(feedUrl)) {
+    const pending = fetchFeedPayload(feedUrl, timeoutMs).finally(() => {
+      if (pendingFeeds.get(feedUrl) === pending) pendingFeeds.delete(feedUrl);
+    });
+    pendingFeeds.set(feedUrl, pending);
   }
-
-  try {
-    let feedTitle = '';
-
-    // If direct RSS/Atom feed URL, attempt rss2json first with full CORS support
+  const payload = await pendingFeeds.get(feedUrl);
+  const valid = payload.items.filter((item) => {
     try {
-      const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`, {
-        signal: AbortSignal.timeout(5000),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === 'ok' && Array.isArray(data.items) && data.items.length > 0) {
-          feedTitle = (data.feed?.title || '').trim();
-          return { ok: true, count: data.items.length, title: feedTitle || data.items[0]?.author || '' };
-        }
-      }
-    } catch {
-      // fallback to multi-provider waterfall
-    }
+      const url = new URL(item.url || item.link || '');
+      return ['http:', 'https:'].includes(url.protocol) && typeof item.title === 'string' && item.title.trim();
+    } catch { return false; }
+  });
+  if (!valid.length) throw new Error('This feed has no articles with valid links.');
+  const articles = valid.map((item, index) => normalizeFeedItem(item, topicId, index, payload.title));
+  Object.defineProperty(articles, 'feedTitle', { value: payload.title });
+  return articles;
+}
 
-    const items = await fetchLiveFeedItems(feedUrl, 'VERIFY', 5000);
-    if (items && items.length > 0) {
-      return { ok: true, count: items.length, title: feedTitle || items[0]?.source || '' };
-    }
-    return { ok: false, count: 0, error: 'No articles were returned for this query or feed.' };
-  } catch (err) {
-    return { ok: false, count: 0, error: err.message || 'Unable to retrieve headlines.' };
+/** Use the same feed-loading path for source validation and actual reading. */
+export async function verifyFeed(feedUrl) {
+  if (!feedUrl) return { ok: false, count: 0, error: 'Feed URL is missing.' };
+  try {
+    const articles = await fetchLiveFeedItems(feedUrl, 'VERIFY', 5000);
+    return { ok: true, count: articles.length, title: articles.feedTitle || articles[0]?.source || '' };
+  } catch (error) {
+    return { ok: false, count: 0, error: error.message || 'Unable to retrieve headlines.' };
   }
 }
 

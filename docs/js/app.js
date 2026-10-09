@@ -52,13 +52,25 @@ import { exportSettingsAsJson } from './settingsExport.js';
 import { fetchArticleImage } from './imageService.js';
 
 const STORAGE_KEY_CURRENT_TOPIC = 'news_current_topic';
+const STORAGE_KEY_SORT_ORDER = 'news_sort_order';
+const STORAGE_KEY_QUICK_URL_STRATEGY = 'news_quick_url_strategy';
+let quickUrlReturnFocus = null;
+let headlinesRequestId = 0;
+let activeRefresh = null;
+let preferredSortOrder = null;
+try {
+  const savedSort = localStorage.getItem(STORAGE_KEY_SORT_ORDER);
+  if (['curated', 'newest', 'oldest'].includes(savedSort)) preferredSortOrder = savedSort;
+} catch { /* Use the topic default when storage is unavailable. */ }
 
 // Application State
 const state = {
   articles: [],
   rawArticles: [],
   currentTopic: 'TOP',
-  sortOrder: 'curated',
+  displayedTopic: null,
+  feedUpdatedAt: 0,
+  sortOrder: preferredSortOrder || 'curated',
   hideLocked: localStorage.getItem('news_hide_locked') === 'true',
   isLoading: false,
 };
@@ -111,7 +123,7 @@ const STRATEGY_DEFINITIONS = [
     id: STRATEGIES.WAYBACK,
     title: 'Wayback Machine',
     icon: '⏳',
-    desc: 'Internet Archive historical snapshot cache',
+    desc: 'Browse older saved versions in the Internet Archive. Snapshots may be out of date or unavailable.',
     badgeClass: 'badge-bypassed',
   },
   {
@@ -127,6 +139,8 @@ const STRATEGY_DEFINITIONS = [
 const elements = {
   feedList: document.getElementById('feedList'),
   feedStatus: document.getElementById('feedStatus'),
+  feedUpdateStatus: document.getElementById('feedUpdateStatus'),
+  pullRefreshStatus: document.getElementById('pullRefreshStatus'),
   feedSortSelect: document.getElementById('feedSortSelect'),
   topicsBar: document.getElementById('topicsBar'),
   menuToggleBtn: document.getElementById('menuToggleBtn'),
@@ -214,6 +228,8 @@ const elements = {
   quickUrlPasteBtn: document.getElementById('quickUrlPasteBtn'),
   quickUrlClearBtn: document.getElementById('quickUrlClearBtn'),
   quickUrlStrategySelect: document.getElementById('quickUrlStrategySelect'),
+  quickUrlOpenBtn: document.getElementById('quickUrlOpenBtn'),
+  quickUrlToolDescription: document.getElementById('quickUrlToolDescription'),
   quickUrlDomainBanner: document.getElementById('quickUrlDomainBanner'),
   quickUrlError: document.getElementById('quickUrlError'),
   quickUrlFavicon: document.getElementById('quickUrlFavicon'),
@@ -1096,68 +1112,69 @@ function closeStrategySwitcher() {
 }
 
 /**
- * Opens an article using the chosen bypass strategy directly inside this window.
- * @param {string} [strategyChoice='']
+ * Parses an article link, including links pasted without a scheme.
  */
-function executeOpenQuickUrl(strategyChoice = '') {
-  const raw = (elements.inputQuickUrl ? elements.inputQuickUrl.value : '').trim();
-  if (!raw) {
-    if (elements.quickUrlError) {
-      elements.quickUrlError.style.display = 'block';
-      elements.quickUrlError.textContent = 'Please enter or paste an article URL first.';
-    }
-    if (elements.quickUrlStrategySelect) {
-      elements.quickUrlStrategySelect.value = '';
-    }
-    if (elements.inputQuickUrl) elements.inputQuickUrl.focus();
-    return;
-  }
-
-  let candidate = raw;
-  if (!/^https?:\/\//i.test(candidate)) {
-    candidate = 'https://' + candidate;
-  }
-
-  let domain = '';
+function parseQuickUrl(raw) {
+  const value = (raw || '').trim();
+  if (!value || /\s/.test(value)) return null;
+  if (/^[a-z][a-z\d+.-]*:\/\//i.test(value) && !/^https?:\/\//i.test(value)) return null;
   try {
-    const parsed = new URL(candidate);
-    domain = normalizeDomain(parsed.hostname);
+    const parsed = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+    const domain = normalizeDomain(parsed.hostname);
+    if (!domain.includes('.') || parsed.username || parsed.password) return null;
+    return { url: parsed.href, domain };
   } catch {
-    domain = normalizeDomain(raw);
+    return null;
   }
+}
 
-  if (!domain || !domain.includes('.')) {
+function getLastQuickUrlStrategy() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_QUICK_URL_STRATEGY);
+    if (saved === 'auto' || STRATEGY_DEFINITIONS.some((s) => s.id === saved)) return saved;
+  } catch {
+    // The dialog still works when browser storage is unavailable.
+  }
+  return 'auto';
+}
+
+/** Opens the article only after the user submits the confirmation form. */
+function executeOpenQuickUrl() {
+  const raw = (elements.inputQuickUrl ? elements.inputQuickUrl.value : '').trim();
+  const parsed = parseQuickUrl(raw);
+  if (!parsed) {
     if (elements.quickUrlError) {
       elements.quickUrlError.style.display = 'block';
-      elements.quickUrlError.textContent = 'Please enter a valid website or article URL.';
-    }
-    if (elements.quickUrlStrategySelect) {
-      elements.quickUrlStrategySelect.value = '';
+      elements.quickUrlError.textContent = raw
+        ? 'Please enter a valid website or article URL.'
+        : 'Please enter or paste an article URL first.';
     }
     if (elements.inputQuickUrl) elements.inputQuickUrl.focus();
     return;
   }
 
-  const stratVal = strategyChoice || (elements.quickUrlStrategySelect ? elements.quickUrlStrategySelect.value : '') || 'auto';
-  let effectiveStrat = stratVal;
-  if (effectiveStrat === 'auto' || !effectiveStrat) {
-    const rule = getDomainRule(domain);
-    effectiveStrat = rule.strategy || STRATEGIES.DIRECT;
-  }
+  const { url: candidate, domain } = parsed;
+  const stratVal = elements.quickUrlStrategySelect?.value || 'auto';
+  const effectiveStrat = stratVal === 'auto' ? (getDomainRule(domain).strategy || STRATEGIES.DIRECT) : stratVal;
 
   if (effectiveStrat === STRATEGIES.FREEDIUM && !isFreediumSupported(domain)) {
     if (elements.quickUrlError) {
       elements.quickUrlError.style.display = 'block';
       elements.quickUrlError.textContent = 'Freedium Mirror is only supported for Medium, NYT, WaPo, Bloomberg, Reuters, Economist, and Financial Times. Please select another tool.';
     }
-    if (elements.quickUrlStrategySelect) {
-      elements.quickUrlStrategySelect.value = '';
-    }
+    if (elements.quickUrlStrategySelect) elements.quickUrlStrategySelect.focus();
     return;
   }
 
-  if (elements.quickUrlRememberCheck && elements.quickUrlRememberCheck.checked && domain) {
+  // Auto follows the existing rule; it should not create a redundant override.
+  if (elements.quickUrlRememberCheck?.checked && stratVal !== 'auto') {
     changeDomainStrategy(domain, effectiveStrat);
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEY_QUICK_URL_STRATEGY, stratVal);
+  } catch {
+    // Storage restrictions must not prevent opening an article.
   }
 
   const bypassUrl = buildStrategyUrl(effectiveStrat, candidate);
@@ -1173,6 +1190,9 @@ function executeOpenQuickUrl(strategyChoice = '') {
  */
 function openQuickUrlModal(initialUrl = '') {
   if (!elements.quickUrlModal) return;
+  if (!elements.quickUrlModal.classList.contains('open')) {
+    quickUrlReturnFocus = document.activeElement;
+  }
 
   if (elements.quickUrlError) {
     elements.quickUrlError.style.display = 'none';
@@ -1180,24 +1200,21 @@ function openQuickUrlModal(initialUrl = '') {
   }
 
   if (elements.quickUrlStrategySelect) {
-    elements.quickUrlStrategySelect.value = '';
+    elements.quickUrlStrategySelect.value = getLastQuickUrlStrategy();
   }
+  if (elements.quickUrlRememberCheck) elements.quickUrlRememberCheck.checked = false;
 
+  elements.quickUrlModal.inert = false;
+  elements.quickUrlModal.setAttribute('aria-hidden', 'false');
   elements.quickUrlModal.classList.add('open');
 
   if (initialUrl && elements.inputQuickUrl) {
     elements.inputQuickUrl.value = initialUrl;
-    analyzeQuickUrl(initialUrl);
-  } else if (elements.inputQuickUrl) {
-    if (elements.inputQuickUrl.value) {
-      analyzeQuickUrl(elements.inputQuickUrl.value);
-    } else {
-      if (elements.quickUrlDomainBanner) elements.quickUrlDomainBanner.style.display = 'none';
-    }
-    setTimeout(() => {
-      elements.inputQuickUrl.focus();
-    }, 50);
   }
+  analyzeQuickUrl(elements.inputQuickUrl?.value || '');
+  const focusTarget = initialUrl && !elements.quickUrlOpenBtn?.disabled
+    ? elements.quickUrlOpenBtn : elements.inputQuickUrl;
+  if (focusTarget) focusTarget.focus();
 }
 
 /**
@@ -1206,6 +1223,9 @@ function openQuickUrlModal(initialUrl = '') {
 function closeQuickUrlModal() {
   if (elements.quickUrlModal) {
     elements.quickUrlModal.classList.remove('open');
+    if (quickUrlReturnFocus?.isConnected) quickUrlReturnFocus.focus();
+    elements.quickUrlModal.inert = true;
+    elements.quickUrlModal.setAttribute('aria-hidden', 'true');
   }
 }
 
@@ -1216,6 +1236,20 @@ function closeQuickUrlModal() {
  */
 function analyzeQuickUrl(inputVal) {
   const raw = (inputVal || '').trim();
+  const parsed = parseQuickUrl(raw);
+  if (elements.quickUrlOpenBtn) {
+    elements.quickUrlOpenBtn.disabled = !parsed;
+    elements.quickUrlOpenBtn.textContent = 'Open article';
+  }
+  if (elements.quickUrlRememberCheck) {
+    elements.quickUrlRememberCheck.disabled = !parsed || elements.quickUrlStrategySelect?.value === 'auto';
+    if (elements.quickUrlRememberCheck.disabled) elements.quickUrlRememberCheck.checked = false;
+  }
+  if (elements.quickUrlRememberDomain) elements.quickUrlRememberDomain.textContent = parsed?.domain || 'this site';
+  if (elements.quickUrlToolDescription) {
+    const definition = STRATEGY_DEFINITIONS.find((s) => s.id === elements.quickUrlStrategySelect?.value);
+    elements.quickUrlToolDescription.textContent = definition?.desc || 'Uses the saved or default tool for this site.';
+  }
 
   // Toggle clear button
   if (elements.quickUrlClearBtn) {
@@ -1227,44 +1261,45 @@ function analyzeQuickUrl(inputVal) {
     elements.quickUrlError.textContent = '';
   }
 
-  if (!raw) {
+  if (!parsed) {
     if (elements.quickUrlDomainBanner) elements.quickUrlDomainBanner.style.display = 'none';
     if (elements.quickUrlStrategySelect) {
       const autoOption = Array.from(elements.quickUrlStrategySelect.options).find((o) => o.value === 'auto');
       if (autoOption) {
-        autoOption.textContent = 'Auto (Best tool for domain)';
+        autoOption.textContent = "Auto (Use this site's default)";
       }
     }
-    return;
-  }
-
-  // Ensure scheme for URL parsing
-  let candidate = raw;
-  if (!/^https?:\/\//i.test(candidate)) {
-    candidate = 'https://' + candidate;
-  }
-
-  let domain = '';
-  try {
-    const parsed = new URL(candidate);
-    domain = normalizeDomain(parsed.hostname);
-  } catch {
-    domain = normalizeDomain(raw);
-  }
-
-  if (!domain || !domain.includes('.')) {
-    if (elements.quickUrlDomainBanner) elements.quickUrlDomainBanner.style.display = 'none';
-    if (raw.length > 5 && elements.quickUrlError) {
+    if (raw && elements.quickUrlError) {
       elements.quickUrlError.style.display = 'block';
       elements.quickUrlError.textContent = 'Please enter a valid website or article URL.';
     }
     return;
   }
 
+  const { domain } = parsed;
   // Domain detected! Look up rule and strategy
   const rule = getDomainRule(domain);
   const recommendedStrategy = rule.strategy || STRATEGIES.DIRECT;
   const recommendedDef = STRATEGY_DEFINITIONS.find((s) => s.id === recommendedStrategy) || { title: recommendedStrategy };
+  const isAuto = elements.quickUrlStrategySelect?.value === 'auto';
+  const selectedStrategy = isAuto ? recommendedStrategy : elements.quickUrlStrategySelect?.value;
+  const selectedDef = STRATEGY_DEFINITIONS.find((s) => s.id === selectedStrategy) || recommendedDef;
+
+  if (elements.quickUrlToolDescription) {
+    elements.quickUrlToolDescription.textContent = isAuto
+      ? `This site's ${rule.isCustom ? 'saved' : 'default'} tool is ${selectedDef.title}. ${selectedDef.desc || ''}`
+      : selectedDef.desc;
+  }
+  const unsupported = selectedStrategy === STRATEGIES.FREEDIUM && !isFreediumSupported(domain);
+  if (elements.quickUrlOpenBtn) {
+    elements.quickUrlOpenBtn.disabled = unsupported;
+    elements.quickUrlOpenBtn.textContent = selectedStrategy === STRATEGIES.DIRECT
+      ? 'Open original article' : `Open with ${selectedDef.title}`;
+  }
+  if (unsupported && elements.quickUrlError) {
+    elements.quickUrlError.style.display = 'block';
+    elements.quickUrlError.textContent = 'Freedium does not support this site. Choose another tool to continue.';
+  }
 
   // Update Auto option in dropdown (clean text without emoji)
   if (elements.quickUrlStrategySelect) {
@@ -1295,12 +1330,12 @@ function analyzeQuickUrl(inputVal) {
   }
 
   if (elements.quickUrlStrategyBadge) {
-    elements.quickUrlStrategyBadge.textContent = recommendedDef.title;
-    elements.quickUrlStrategyBadge.className = `badge ${recommendedStrategy === STRATEGIES.DIRECT ? 'badge-free' : 'badge-bypassed'}`;
+    elements.quickUrlStrategyBadge.textContent = selectedDef.title;
+    elements.quickUrlStrategyBadge.className = `badge ${selectedStrategy === STRATEGIES.DIRECT ? 'badge-free' : 'badge-bypassed'}`;
   }
 
   if (elements.quickUrlRuleSourceTag) {
-    elements.quickUrlRuleSourceTag.textContent = rule.isCustom ? 'Custom Rule' : 'Default Rule';
+    elements.quickUrlRuleSourceTag.textContent = isAuto ? (rule.isCustom ? 'Saved for this site' : 'Site default') : 'Selected tool';
   }
 
   if (elements.quickUrlDomainBanner) {
@@ -1456,23 +1491,25 @@ function updateStatusCounter() {
  * falling back to TOP.
  */
 function getInitialTopic() {
+  const visible = getVisibleTopics();
+  const isVisible = (id) => visible.some((topic) => topic.id === id);
   if (typeof window !== 'undefined' && window.location.hash) {
-    const hashTopicId = window.location.hash.replace(/^#/, '').toUpperCase();
-    if (hashTopicId && getTopicById(hashTopicId)) {
+    const hashTopicId = window.location.hash.replace(/^#/, '').split('?')[0].toUpperCase();
+    if (hashTopicId && isVisible(hashTopicId)) {
       return hashTopicId;
     }
   }
 
   try {
     const saved = localStorage.getItem(STORAGE_KEY_CURRENT_TOPIC);
-    if (saved && getTopicById(saved)) {
+    if (saved && isVisible(saved)) {
       return saved;
     }
   } catch {
     // fallback
   }
 
-  return 'TOP';
+  return visible[0]?.id || 'TOP';
 }
 
 /**
@@ -1513,7 +1550,13 @@ function applySortAndRender() {
  * Renders instantly (0ms), then processes any needed archive checks in background.
  */
 async function loadHeadlines(topicId = state.currentTopic, options = {}) {
-  if (state.isLoading) return;
+  const requestId = ++headlinesRequestId;
+  const sameTopic = topicId === state.displayedTopic;
+  const keepVisible = sameTopic && state.rawArticles.length > 0;
+  // Resolve defaults before fetching; never overwrite a choice made while waiting.
+  const isLatest = topicId === 'LATEST' || topicId === 'BREAKING';
+  state.sortOrder = preferredSortOrder || (isLatest ? 'newest' : 'curated');
+  if (elements.feedSortSelect) elements.feedSortSelect.value = state.sortOrder;
   state.isLoading = true;
   state.currentTopic = topicId;
 
@@ -1543,7 +1586,7 @@ async function loadHeadlines(topicId = state.currentTopic, options = {}) {
     elements.topicsBar.querySelectorAll('.topic-pill').forEach((p) => {
       if (p.getAttribute('data-topic') === topicId) {
         p.classList.add('active');
-        p.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        if (!sameTopic) p.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
       } else {
         p.classList.remove('active');
       }
@@ -1551,30 +1594,47 @@ async function loadHeadlines(topicId = state.currentTopic, options = {}) {
   }
 
   elements.refreshIcon.classList.add('spin');
-  elements.loadingState.style.display = 'block';
+  elements.loadingState.style.display = keepVisible ? 'none' : 'block';
   elements.errorState.style.display = 'none';
-  elements.feedList.style.display = 'none';
+  elements.feedList.style.display = keepVisible ? 'flex' : 'none';
+  if (elements.feedUpdateStatus) {
+    elements.feedUpdateStatus.hidden = false;
+    elements.feedUpdateStatus.textContent = options.forceLive ? 'Checking for newer headlines…' : 'Loading headlines…';
+    elements.feedUpdateStatus.removeAttribute('title');
+  }
 
   try {
-    const rawArticles = await fetchTopHeadlines(topicId, options);
-    state.rawArticles = rawArticles;
-
-    // Default 'LATEST' (or legacy 'BREAKING') to chronological newest-first; other topics keep active selection
-    const isLatest = (topicId || '').toUpperCase() === 'LATEST' || (topicId || '').toUpperCase() === 'BREAKING';
-    if (isLatest) {
-      state.sortOrder = 'newest';
-    } else if (elements.feedSortSelect) {
-      state.sortOrder = elements.feedSortSelect.value || 'curated';
+    let feedStatus = null;
+    const rawArticles = await fetchTopHeadlines(topicId, { ...options, onStatus(status) {
+      feedStatus = status;
+    } });
+    if (requestId !== headlinesRequestId) return;
+    const updatedAt = Number(feedStatus?.updatedAt) || 0;
+    // A failed live refresh must not roll back an already displayed feed.
+    const retainCurrent = keepVisible && options.forceLive && feedStatus?.source === 'saved'
+      && (!updatedAt || updatedAt <= state.feedUpdatedAt);
+    if (!retainCurrent) {
+      state.rawArticles = rawArticles;
+      state.displayedTopic = topicId;
+      state.feedUpdatedAt = updatedAt;
     }
-    if (elements.feedSortSelect) {
-      elements.feedSortSelect.value = state.sortOrder;
+    if (elements.feedUpdateStatus && feedStatus) {
+      const updated = (retainCurrent ? state.feedUpdatedAt : updatedAt);
+      const time = updated ? new Date(updated).toLocaleString() : 'unknown time';
+      const failed = feedStatus.failedFeeds || [];
+      elements.feedUpdateStatus.textContent = retainCurrent
+        ? 'Refresh unavailable. Keeping your current headlines.'
+        : feedStatus.refreshFailed
+          ? `Refresh unavailable. Showing saved headlines from ${time}.`
+          : `${feedStatus.source === 'live' ? 'Updated' : 'Saved headlines from'} ${time}${failed.length ? ` · ${failed.length} source${failed.length === 1 ? '' : 's'} unavailable` : ''}`;
+      elements.feedUpdateStatus.title = failed.map((feed) => `${feed.name}: ${feed.error}`).join('\n');
     }
 
     elements.loadingState.style.display = 'none';
     elements.feedList.style.display = 'flex';
 
     // 1. Instant First Paint: Render all items immediately with active sort
-    applySortAndRender();
+    if (!retainCurrent) applySortAndRender();
 
     // 2. Background Quick Checks: Process any articles needing archive checks
     const pendingChecks = state.articles.filter((a) => a.needsArchiveCheck);
@@ -1582,18 +1642,80 @@ async function loadHeadlines(topicId = state.currentTopic, options = {}) {
       // Run checks concurrently with small delay stagger
       pendingChecks.forEach(async (article) => {
         const resolved = await resolveArchiveStatus(article);
-        updateCardElement(resolved);
+        if (requestId === headlinesRequestId) updateCardElement(resolved);
       });
     }
   } catch (error) {
+    if (requestId !== headlinesRequestId) return;
     console.error({ error: error?.message }, 'Failed to load news headlines');
     elements.loadingState.style.display = 'none';
-    elements.errorState.style.display = 'block';
+    elements.errorState.style.display = keepVisible ? 'none' : 'block';
     elements.errorMessage.textContent = error?.message || 'Unable to fetch news headlines.';
+    if (elements.feedUpdateStatus) elements.feedUpdateStatus.textContent = keepVisible
+      ? 'Refresh unavailable. Keeping your current headlines.'
+      : 'Refresh failed. Please retry shortly.';
   } finally {
-    state.isLoading = false;
-    elements.refreshIcon.classList.remove('spin');
+    if (requestId === headlinesRequestId) {
+      state.isLoading = false;
+      elements.refreshIcon.classList.remove('spin');
+    }
   }
+}
+
+// Menu, pull gesture and browser reload all request the same live refresh.
+function refreshCurrentTopic() {
+  const topic = state.currentTopic;
+  if (activeRefresh?.topic === topic && activeRefresh.requestId === headlinesRequestId) {
+    return activeRefresh.promise;
+  }
+  const promise = loadHeadlines(topic, { forceLive: true });
+  const refresh = { topic, requestId: headlinesRequestId, promise };
+  activeRefresh = refresh;
+  promise.finally(() => {
+    if (activeRefresh === refresh) activeRefresh = null;
+  });
+  return promise;
+}
+
+function setupPullToRefresh() {
+  const threshold = 72;
+  let gesture = null;
+  const scrollTop = () => window.scrollY || document.scrollingElement?.scrollTop || 0;
+  const blocked = () => elements.headerMenuDropdown?.classList.contains('open')
+    || [elements.rulesModal, elements.topicsModal, elements.strategySwitcherModal, elements.quickUrlModal]
+      .some((modal) => modal?.classList.contains('open'));
+  const reset = () => {
+    gesture = null;
+    if (elements.pullRefreshStatus) elements.pullRefreshStatus.hidden = true;
+  };
+  document.addEventListener('touchstart', (event) => {
+    reset();
+    if (event.touches.length !== 1 || scrollTop() > 0 || blocked()
+      || event.target.closest('input, textarea, select, button, .topics-bar, .modal-overlay')) return;
+    const touch = event.touches[0];
+    gesture = { x: touch.clientX, y: touch.clientY, distance: 0 };
+  }, { passive: true });
+  document.addEventListener('touchmove', (event) => {
+    if (!gesture) return;
+    if (event.touches.length !== 1 || scrollTop() > 0 || blocked()) { reset(); return; }
+    const touch = event.touches[0];
+    const dy = touch.clientY - gesture.y;
+    const dx = Math.abs(touch.clientX - gesture.x);
+    if (dy < 0 || (dx > 10 && dx > dy)) { reset(); return; }
+    gesture.distance = dy;
+    if (dy < 10) return;
+    if (event.cancelable) event.preventDefault();
+    if (elements.pullRefreshStatus) {
+      elements.pullRefreshStatus.hidden = false;
+      elements.pullRefreshStatus.textContent = dy >= threshold ? 'Release to refresh' : 'Pull to refresh';
+    }
+  }, { passive: false });
+  document.addEventListener('touchend', () => {
+    const shouldRefresh = gesture?.distance >= threshold && scrollTop() === 0 && !blocked();
+    reset();
+    if (shouldRefresh) refreshCurrentTopic();
+  }, { passive: true });
+  document.addEventListener('touchcancel', reset, { passive: true });
 }
 
 /**
@@ -2199,8 +2321,11 @@ function setupEventListeners() {
   // Feed Sort Order change listener
   if (elements.feedSortSelect) {
     elements.feedSortSelect.addEventListener('change', (e) => {
+      if (!['curated', 'newest', 'oldest'].includes(e.target.value)) return;
       state.sortOrder = e.target.value;
-      applySortAndRender();
+      preferredSortOrder = state.sortOrder;
+      try { localStorage.setItem(STORAGE_KEY_SORT_ORDER, state.sortOrder); } catch { /* Keep it for this session. */ }
+      if (state.displayedTopic === state.currentTopic) applySortAndRender();
     });
   }
 
@@ -2242,9 +2367,9 @@ function setupEventListeners() {
 
   // Refresh button - bypasses static cache to pull fresh live RSS
   elements.refreshBtn.addEventListener('click', () => {
-    loadHeadlines(state.currentTopic, { forceLive: true });
-    showToast('Refreshing feed with live headlines...');
+    refreshCurrentTopic();
   });
+  setupPullToRefresh();
 
   // Hide Locked Filter toggle
   elements.hideLockedCheckbox.checked = state.hideLocked;
@@ -2313,6 +2438,24 @@ function setupEventListeners() {
         closeQuickUrlModal();
       }
     });
+    elements.quickUrlModal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeQuickUrlModal();
+      } else if (e.key === 'Tab') {
+        const controls = Array.from(elements.quickUrlModal.querySelectorAll('button, input, select'))
+          .filter((control) => !control.disabled && control.getClientRects().length);
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    });
   }
   if (elements.inputQuickUrl) {
     elements.inputQuickUrl.addEventListener('input', (e) => {
@@ -2329,7 +2472,6 @@ function setupEventListeners() {
       if (elements.inputQuickUrl) {
         elements.inputQuickUrl.value = '';
         analyzeQuickUrl('');
-        if (elements.quickUrlStrategySelect) elements.quickUrlStrategySelect.value = '';
         elements.inputQuickUrl.focus();
       }
     });
@@ -2354,13 +2496,10 @@ function setupEventListeners() {
     });
   }
 
-  // As soon as a dropdown selection is made, just go!
+  // Changing a tool updates the preview; only form submission opens the link.
   if (elements.quickUrlStrategySelect) {
-    elements.quickUrlStrategySelect.addEventListener('change', (e) => {
-      const chosen = e.target.value;
-      if (chosen) {
-        executeOpenQuickUrl(chosen);
-      }
+    elements.quickUrlStrategySelect.addEventListener('change', () => {
+      analyzeQuickUrl(elements.inputQuickUrl?.value || '');
     });
   }
 
@@ -2611,7 +2750,7 @@ function setupEventListeners() {
             if (selectedSources.length === 0) {
               if (elements.newTopicFormError) {
                 elements.newTopicFormError.style.display = 'block';
-                elements.newTopicFormError.innerHTML = `⚠️ <strong>No news found:</strong> Google News returned 0 articles for "<strong>${escapeHtml(formattedQuery)}</strong>". Please refine your keywords or select an RSS source.`;
+                elements.newTopicFormError.textContent = verification.error || 'No news was returned for these keywords. Try another search or select an RSS source.';
               }
               return;
             }
@@ -2690,7 +2829,7 @@ function setupEventListeners() {
         if (!verification.ok || verification.count === 0) {
           if (elements.newSourceFormError) {
             elements.newSourceFormError.style.display = 'block';
-            elements.newSourceFormError.innerHTML = `⚠️ <strong>Cannot read RSS feed:</strong> Could not retrieve articles from "<strong>${escapeHtml(url)}</strong>". Please ensure the URL is a valid, publicly accessible RSS or Atom feed.`;
+            elements.newSourceFormError.textContent = verification.error || 'This feed is currently unavailable. Check the URL or try again shortly.';
           }
           return;
         }
@@ -2755,6 +2894,7 @@ function setupEventListeners() {
 document.addEventListener('DOMContentLoaded', () => {
   initPWA();
   updateLocalMenuLabels();
+  state.currentTopic = getInitialTopic();
   renderTopicsBar();
   setupEventListeners();
 
@@ -2768,7 +2908,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   window.addEventListener('focus', () => checkIncomingShare());
 
-  const initialTopic = getInitialTopic();
-  // Force a fresh live RSS refresh on page load / browser refresh
-  loadHeadlines(initialTopic, { forceLive: true });
+  // Native reloads (including browsers' pull-to-refresh) retain the same selection.
+  const isReload = window.performance?.getEntriesByType('navigation')[0]?.type === 'reload';
+  if (isReload) refreshCurrentTopic();
+  else loadHeadlines(state.currentTopic);
 });
