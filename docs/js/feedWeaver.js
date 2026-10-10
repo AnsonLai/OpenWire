@@ -150,6 +150,7 @@ export function isDuplicateArticle(artA, artB) {
  */
 export function mergeArticleMetadata(primaryArt, secondaryArt) {
   const merged = { ...primaryArt };
+  if (!merged.summary && secondaryArt.summary) merged.summary = secondaryArt.summary;
 
   // Prefer direct lead image if primary lacks one
   if (!merged.imageUrl && secondaryArt.imageUrl) {

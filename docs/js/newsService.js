@@ -15,12 +15,13 @@ import { getFeedsForTopic, getCustomFeedsForTopic, getFeedsByIds } from './feedR
 import { weaveFeeds } from './feedWeaver.js';
 import { isNotLogoOrFavicon, extractImageCandidatesFromHtml } from './imageService.js';
 import { isGoogleNewsUrl, decodeEmbeddedGoogleUrl, resolvePublisherUrl } from './publisherUrlService.js';
+import { cleanPreviewText, literalKeywords, fetchPreviewArticles, enrichArticlePreviews, filterKeywordArticles } from './previewService.js';
 
 // Supported Google News topic feeds
 export const TOPICS = {
   TOP: { id: 'TOP', label: 'Top Stories', file: '/OpenWire/data/news_top.json', url: 'https://news.google.com/rss' },
   LATEST: { id: 'LATEST', label: 'Latest News', file: '/OpenWire/data/news_latest.json', url: 'https://news.google.com/rss' },
-  AI: { id: 'AI', label: 'Artificial Intelligence', file: '/OpenWire/data/news_ai.json', url: 'https://news.google.com/rss/search?q=%22Artificial+Intelligence%22+OR+AI+when%3A3d' },
+  AI: { id: 'AI', label: 'Artificial Intelligence', file: '/OpenWire/data/news_ai.json', url: 'https://news.google.com/rss/search?q=%22Artificial+Intelligence%22+OR+OpenAI+OR+%22machine+learning%22+OR+AI+when%3A3d' },
   CANADA: { id: 'CANADA', label: 'Canada', file: '/OpenWire/data/news_canada.json', url: 'https://news.google.com/rss?hl=en-CA&gl=CA&ceid=CA:en' },
   VANCOUVER: { id: 'VANCOUVER', label: 'Vancouver (Local)', file: '/OpenWire/data/news_vancouver.json', url: 'https://news.google.com/rss/search?q=Vancouver&hl=en-CA&gl=CA&ceid=CA:en' },
   BC: { id: 'BC', label: 'British Columbia (Local)', file: '/OpenWire/data/news_bc.json', url: 'https://news.google.com/rss/search?q=%22British+Columbia%22&hl=en-CA&gl=CA&ceid=CA:en' },
@@ -199,7 +200,9 @@ function getTopicFeeds(topicId, topicConfig = getTopicById(topicId) || TOPICS[to
 
 function getFeedSignature(topicId) {
   const topic = getTopicById(topicId) || TOPICS[topicId] || TOPICS.TOP;
-  return JSON.stringify({ url: topic.url, feeds: getTopicFeeds(topicId, topic).map((feed) => [feed.url, feed.maxArticles]) });
+  const keywords = literalKeywords(topic.keywords);
+  return JSON.stringify({ url: topic.url, ...(keywords.length ? { keywords, previewVersion: 2 } : {}),
+    feeds: getTopicFeeds(topicId, topic).map((feed) => [feed.url, feed.maxArticles]) });
 }
 
 /**
@@ -274,8 +277,11 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
   let liveAttempted = false;
   let liveError = null;
   let sourceStatuses = [];
+  const keywords = literalKeywords(topicConfig.keywords);
+  const previewCandidates = keywords.length ? fetchPreviewArticles({ force: forceLive }) : Promise.resolve([]);
 
-  const formatArticles = (articles) => Promise.all(articles.map(async (article) => {
+  const formatArticles = async (articles) => Promise.all((keywords.length
+    ? enrichArticlePreviews(articles, await previewCandidates) : articles).map(async (article) => {
     const publisher = isGoogleNewsUrl(article.originalUrl) ? await resolvePublisherUrl(article.originalUrl) : '';
     return applyStrategyToArticle({ ...article,
       ...(publisher ? { googleNewsUrl: article.googleNewsUrl || article.originalUrl,
@@ -290,6 +296,7 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
   // Every source gets a chance even when the primary feed is unavailable.
   const fetchLiveStream = async (cachedArticles = []) => {
     liveAttempted = true;
+    const knownArticles = [...(Array.isArray(previousArticles) ? previousArticles.filter(article => article && typeof article === 'object') : []), ...cachedArticles];
     const configs = [
       ...(topicConfig.url ? [{ name: topicConfig.url.includes('news.google.com') ? 'Google News' : topicConfig.label,
         url: topicConfig.url, primary: true }] : []),
@@ -317,6 +324,17 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
         }));
       }
     }));
+    if (keywords.length) {
+      const previews = await previewCandidates;
+      for (const result of settled) {
+        if (!result.articles) continue;
+        const enriched = enrichArticlePreviews(result.articles, [...knownArticles, ...previews]);
+        // Google search results already honor their query. Apply local keyword
+        // matching to assigned publisher feeds using titles and public excerpts.
+        result.articles = result.config.primary && result.config.url.includes('news.google.com')
+          ? enriched : filterKeywordArticles(enriched, keywords);
+      }
+    }
     sourceStatuses = settled.map((result) => ({
       name: result.config.name, url: result.config.url, count: result.articles?.length || 0,
       status: result.error ? (result.articles?.length ? 'saved' : 'unavailable') : 'live',
@@ -328,7 +346,7 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
     }));
     // An entirely failed refresh uses the complete topic fallback; it must not
     // stamp yesterday's recovered source data as a successful update.
-    if (!available.some((result) => !result.error)) {
+    if (!settled.some((result) => !result.error)) {
       throw new Error('RSS sources are unavailable right now. Please retry shortly. ' + (failed[0]?.error || ''));
     }
     const primary = available.find((result) => result.config.primary);
@@ -339,11 +357,11 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
       leadAnchorCount: isLatest ? 0 : 2, maxConsecutivePerDomain: 2,
       cadenceInterval: 2, maxTotalArticles: 60,
     });
-    const knownArticles = [...(Array.isArray(previousArticles) ? previousArticles.filter(article => article && typeof article === 'object') : []), ...cachedArticles];
     for (const article of articles) {
       const match = knownArticles.find((saved) => isDuplicateArticle(article, saved));
       if (match) {
         if (!article.imageUrl) article.imageUrl = match.imageUrl || '';
+        if (!article.summary) article.summary = match.summary || '';
         if (article.originalUrl?.includes('news.google.com') && match.originalUrl && !match.originalUrl.includes('news.google.com')) {
           article.originalUrl = match.originalUrl;
           Object.assign(article, applyStrategyToArticle(article));
@@ -477,6 +495,8 @@ export function normalizeFeedItem(item, topicId, index, feedTitle = '') {
     timeAgo: formatRelativeTime(pubDate),
     needsArchiveCheck: false,
     imageUrl,
+    summary: ['summary', 'description', 'content_text', 'content', 'content_html'].map(field => cleanPreviewText(item[field]))
+      .find(Boolean) || '',
   };
 
   return applyStrategyToArticle(baseArticle);

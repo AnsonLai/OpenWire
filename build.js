@@ -166,6 +166,7 @@ export function transformServiceWorker(sourceSw, base, cacheKey, revision = 'v22
     ["'./js/app.js'", `'${base}js/app.js'`],
     ["'./js/newsService.js'", `'${base}js/newsService.js'`],
     ["'./js/imageService.js'", `'${base}js/imageService.js'`],
+    ["'./js/previewService.js'", `'${base}js/previewService.js'`],
     ["'./js/topicRegistry.js'", `'${base}js/topicRegistry.js'`],
     ["'./js/domainRegistry.js'", `'${base}js/domainRegistry.js'`],
     ["'./js/feedRegistry.js'", `'${base}js/feedRegistry.js'`],

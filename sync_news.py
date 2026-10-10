@@ -28,6 +28,7 @@ import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from html.parser import HTMLParser
 from article_metadata import ArticleMetadataCache
+from preview_text import extract_preview, extract_feed_preview
 
 SKIP_PAGE_IMAGES = False
 metadata_cache = ArticleMetadataCache()
@@ -43,7 +44,7 @@ except ImportError:
 TOPICS = {
     "top": "https://news.google.com/rss",
     "latest": "https://news.google.com/rss",
-    "ai": "https://news.google.com/rss/search?q=%22Artificial+Intelligence%22+OR+AI+when%3A3d",
+    "ai": "https://news.google.com/rss/search?q=%22Artificial+Intelligence%22+OR+OpenAI+OR+%22machine+learning%22+OR+AI+when%3A3d",
     "canada": "https://news.google.com/rss?hl=en-CA&gl=CA&ceid=CA:en",
     "vancouver": "https://news.google.com/rss/search?q=Vancouver&hl=en-CA&gl=CA&ceid=CA:en",
     "bc": "https://news.google.com/rss/search?q=%22British+Columbia%22&hl=en-CA&gl=CA&ceid=CA:en",
@@ -312,6 +313,8 @@ def is_duplicate_article(art_a: dict, art_b: dict) -> bool:
 def merge_article_metadata(primary_art: dict, secondary_art: dict) -> dict:
     """Merges matching articles, retaining the richest image and canonical URL."""
     merged = dict(primary_art)
+    if not merged.get('summary') and secondary_art.get('summary'):
+        merged['summary'] = secondary_art['summary']
     if not merged.get("imageUrl") and secondary_art.get("imageUrl"):
         merged["imageUrl"] = secondary_art["imageUrl"]
     if ("news.google.com" in merged.get("originalUrl", "")) and secondary_art.get("originalUrl"):
@@ -360,14 +363,14 @@ def is_valid_article_image(url: str, width: int = None, height: int = None) -> b
 
     return True
 
-def _fetch_page_image(url: str) -> str:
+def _fetch_page_metadata(url: str) -> dict:
     """
-    Extracts high-resolution editorial photo from article page while strictly filtering out
+    Extracts a short public preview and high-resolution editorial photo while filtering out
     publisher logos, favicons, site icons, author avatars, and tracking pixels.
     Tiers: OpenGraph -> Twitter -> JSON-LD Article -> Microdata -> Figure <img> -> Microlink Fallback.
     """
     if not url or "news.google.com" in url:
-        return ""
+        return {}
 
     def test_candidate(candidate: str, width: int = None, height: int = None) -> str:
         if not candidate:
@@ -390,32 +393,33 @@ def _fetch_page_image(url: str) -> str:
     except Exception:
         pass
 
+    summary = extract_preview(chunk)
     if chunk:
         # Tier 1: OpenGraph meta tags
         og_matches = re.finditer(r'<meta[^>]+(?:property|name)=["\'](?:og:image|og:image:url|og:image:secure_url)["\'][^>]+content=["\']([^"\']+)["\']', chunk, re.I)
         for m in og_matches:
             c = test_candidate(m.group(1))
             if c:
-                return c
+                return {'imageUrl': c, 'summary': summary}
 
         og_rev = re.finditer(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\'](?:og:image|og:image:url|og:image:secure_url)["\']', chunk, re.I)
         for m in og_rev:
             c = test_candidate(m.group(1))
             if c:
-                return c
+                return {'imageUrl': c, 'summary': summary}
 
         # Tier 2: Twitter card meta tags
         tw_matches = re.finditer(r'<meta[^>]+(?:property|name)=["\'](?:twitter:image|twitter:image:src)["\'][^>]+content=["\']([^"\']+)["\']', chunk, re.I)
         for m in tw_matches:
             c = test_candidate(m.group(1))
             if c:
-                return c
+                return {'imageUrl': c, 'summary': summary}
 
         tw_rev = re.finditer(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\'](?:twitter:image|twitter:image:src)["\']', chunk, re.I)
         for m in tw_rev:
             c = test_candidate(m.group(1))
             if c:
-                return c
+                return {'imageUrl': c, 'summary': summary}
 
         # Tier 3: Schema.org JSON-LD scripts
         json_ld_matches = re.finditer(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>([\s\S]*?)</script>', chunk, re.I)
@@ -439,7 +443,7 @@ def _fetch_page_image(url: str) -> str:
                         if isinstance(img_field, str):
                             c = test_candidate(img_field)
                             if c:
-                                return c
+                                return {'imageUrl': c, 'summary': summary}
                         elif isinstance(img_field, list):
                             for sub in img_field:
                                 u = sub if isinstance(sub, str) else (sub.get("url") if isinstance(sub, dict) else "")
@@ -447,17 +451,17 @@ def _fetch_page_image(url: str) -> str:
                                 h = sub.get("height") if isinstance(sub, dict) else None
                                 c = test_candidate(u, w, h)
                                 if c:
-                                    return c
+                                    return {'imageUrl': c, 'summary': summary}
                         elif isinstance(img_field, dict) and img_field.get("url"):
                             c = test_candidate(img_field.get("url"), img_field.get("width"), img_field.get("height"))
                             if c:
-                                return c
+                                return {'imageUrl': c, 'summary': summary}
 
                         thumb = it.get("thumbnailUrl")
                         if isinstance(thumb, str):
                             c = test_candidate(thumb)
                             if c:
-                                return c
+                                return {'imageUrl': c, 'summary': summary}
             except Exception:
                 pass
 
@@ -466,13 +470,13 @@ def _fetch_page_image(url: str) -> str:
         for m in link_matches:
             c = test_candidate(m.group(1))
             if c:
-                return c
+                return {'imageUrl': c, 'summary': summary}
 
         itemprop_matches = re.finditer(r'<meta[^>]+itemprop=["\']image["\'][^>]+content=["\']([^"\']+)["\']', chunk, re.I)
         for m in itemprop_matches:
             c = test_candidate(m.group(1))
             if c:
-                return c
+                return {'imageUrl': c, 'summary': summary}
 
         # Tier 5: In-article <figure> or <article> <img> tags
         article_blocks = re.findall(r'<(?:article|figure|main)[^>]*>([\s\S]*?)</(?:article|figure|main)>', chunk, re.I)
@@ -480,7 +484,7 @@ def _fetch_page_image(url: str) -> str:
             parser = FeedImageParser(url)
             parser.feed(block)
             if parser.image:
-                return parser.image
+                return {'imageUrl': parser.image, 'summary': summary}
 
     # Tier 6: Microlink fallback API for protected sites (403 Forbidden, Cloudflare, SPAs)
     try:
@@ -489,6 +493,8 @@ def _fetch_page_image(url: str) -> str:
         with urllib.request.urlopen(ml_req, timeout=3.5) as ml_resp:
             ml_data = json.loads(ml_resp.read().decode("utf-8"))
             if ml_data.get("status") == "success":
+                if not summary and isinstance(ml_data.get('data', {}).get('description'), str):
+                    summary = extract_preview(ml_data['data']['description'], fragment=True)
                 img_obj = ml_data.get("data", {}).get("image")
                 if isinstance(img_obj, dict):
                     cand_url = img_obj.get("url", "")
@@ -496,16 +502,36 @@ def _fetch_page_image(url: str) -> str:
                     h = img_obj.get("height")
                     c = test_candidate(cand_url, w, h)
                     if c:
-                        return c
+                        return {'imageUrl': c, 'summary': summary}
     except Exception:
         pass
 
-    return ""
+    return {'imageUrl': '', 'summary': summary} if summary else {}
+
+
+def _fetch_page_image(url: str) -> str:
+    """Compatibility helper for photo-only callers."""
+    return _fetch_page_metadata(url).get('imageUrl', '')
+
+
+def extract_page_metadata(url: str) -> dict:
+    if not url or urllib.parse.urlparse(url).hostname == 'news.google.com':
+        return {}
+    def lookup():
+        metadata = _fetch_page_metadata(url)
+        return json.dumps(metadata) if metadata else ''
+    # A separate key migrates older photo-only cache entries without treating
+    # missing descriptions as seven-day successes. The same request budget applies.
+    value = metadata_cache.get('image', 'preview:' + url, lookup)
+    try:
+        result = json.loads(value) if value else {}
+        return result if isinstance(result, dict) else {}
+    except ValueError:
+        return {}
+
 
 def extract_page_image(url: str) -> str:
-    if not url or urllib.parse.urlparse(url).hostname == 'news.google.com':
-        return ''
-    return metadata_cache.get('image', url, lambda: _fetch_page_image(url))
+    return extract_page_metadata(url).get('imageUrl', '')
 
 
 def resolve_publisher_url(url: str) -> str:
@@ -592,6 +618,10 @@ def process_single_google_item(item, topic_name: str, idx: int) -> dict:
     if not image_url and not SKIP_PAGE_IMAGES:
         image_url = extract_og_image(canonical_url)
     article = build_article_record(topic_name, idx, title, source_name, canonical_url, pub_date, image_url, source_url)
+    # Google RSS descriptions may contain lists of other stories, rather than
+    # the article's own preview. Use only direct publisher descriptions here.
+    if urllib.parse.urlparse(link).hostname != 'news.google.com':
+        article['summary'] = extract_feed_preview(item)
     if urllib.parse.urlparse(link).hostname == 'news.google.com':
         article['googleNewsUrl'] = link
     return article
@@ -764,6 +794,7 @@ def process_direct_feed(feed_cfg: dict, topic_name: str) -> list:
 
         art_id = f"art-{topic_name}-{feed_cfg['domain'][:4]}-{idx}"
         art = build_article_record(topic_name, idx, clean_title, feed_name, link, pub_date, image_url)
+        art['summary'] = extract_feed_preview(item)
         art["id"] = art_id
         articles.append(art)
 
@@ -1012,6 +1043,22 @@ def process_topic(topic_name: str, primary_url: str) -> list:
                 except Exception:
                     pass
 
+    # Keep RSS excerpts first; reuse the photo lookup's public description for
+    # missing excerpts. Publishers with feed photos also get a bounded preview
+    # lookup, shared across topics and subsequent scheduled runs.
+    need_preview = [a for a in final_articles if not a.get('summary') and 'youtube.com' not in a.get('originalUrl', '')]
+    if need_preview and not SKIP_PAGE_IMAGES:
+        with ThreadPoolExecutor(max_workers=min(len(need_preview), 8)) as executor:
+            futures = {executor.submit(extract_page_metadata, a['originalUrl']): a for a in need_preview}
+            for future, article in futures.items():
+                try:
+                    metadata = future.result()
+                    article['summary'] = metadata.get('summary', '')
+                    if not article.get('imageUrl'):
+                        article['imageUrl'] = metadata.get('imageUrl', '')
+                except Exception:
+                    pass
+
     img_count = sum(1 for a in final_articles if a.get("imageUrl"))
     print(f"[{topic_name.upper()}] Final woven feed: {len(final_articles)} articles ({img_count} photos).")
     if final_articles:
@@ -1051,6 +1098,19 @@ def published_publisher_urls():
     return urls
 
 
+def preview_article_pool(results):
+    """Public excerpts for enriching URLs already returned by a topic's feeds."""
+    by_url = {}
+    for articles in results.values():
+        for article in articles:
+            url = article.get('originalUrl', '')
+            if not url or urllib.parse.urlparse(url).scheme not in ('http', 'https'):
+                continue
+            record = {key: value for key, value in article.items() if key not in ('feedStatus', 'keywordMatch')}
+            by_url[url] = merge_article_metadata(by_url[url], record) if url in by_url else record
+    return list(by_url.values())[:600]
+
+
 def sync():
     """Refresh snapshots, preserving previous files when a topic fails."""
     os.makedirs("data", exist_ok=True)
@@ -1072,6 +1132,9 @@ def sync():
         write_json_atomic(topic_file, articles)
         print(f"Saved {len(articles)} articles to {topic_file}")
         all_results[topic_name] = articles
+    if all_results:
+        pool = preview_article_pool(all_results)
+        write_json_atomic('data/preview_articles.json', pool)
     if "top" in all_results:
         write_json_atomic("news.json", all_results["top"])
     try:

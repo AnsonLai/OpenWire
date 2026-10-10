@@ -17,6 +17,8 @@ It fetches top headlines from Google News RSS and custom feeds, classifies publi
 2. **In-App Strategy & Topic Management**:
    * An ongoing, customizable list of domains and strategies.
    * Add custom topics, search keywords, and RSS sources.
+   * Topic keywords also match short RSS descriptions and public article previews within the topic's assigned feeds. The AI topic includes OpenAI, AI, artificial intelligence, machine learning, and ChatGPT. Short terms use whole-word matching.
+   * Scheduled refreshes publish `data/preview_articles.json` as a public excerpt lookup for URLs already in a topic's feeds. It never supplies additional stories from other feeds. Custom keywords stay on your device; missing previews do not prevent ordinary headlines from loading.
    * Open the **Rules** dialog in the app to view strategies, add new domain overrides, or tweak methods on the fly (saved to device `localStorage`).
 3. **PWA-Ready for Mobile Installation**:
    * Includes `manifest.json`, `sw.js` (Service Worker), and responsive vector/PNG icons.

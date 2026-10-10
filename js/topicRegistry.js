@@ -22,7 +22,8 @@ export const DEFAULT_LOCAL_EDITION = {
 export const DEFAULT_TOPICS = [
   { id: 'TOP', label: 'Top Stories', file: './data/news_top.json', url: 'https://news.google.com/rss', isVisible: true, isCustom: false },
   { id: 'LATEST', label: 'Latest', file: './data/news_latest.json', url: 'https://news.google.com/rss', isVisible: true, isCustom: false },
-  { id: 'AI', label: 'AI', file: './data/news_ai.json', url: 'https://news.google.com/rss/search?q=%22Artificial+Intelligence%22+OR+AI+when%3A3d', isVisible: true, isCustom: false },
+  { id: 'AI', label: 'AI', file: './data/news_ai.json', url: 'https://news.google.com/rss/search?q=%22Artificial+Intelligence%22+OR+OpenAI+OR+%22machine+learning%22+OR+AI+when%3A3d',
+    keywords: ['artificial intelligence', 'OpenAI', 'AI', 'machine learning', 'ChatGPT'], isVisible: true, isCustom: false },
   { id: 'CANADA', label: 'Canada', file: './data/news_canada.json', url: 'https://news.google.com/rss?hl=en-CA&gl=CA&ceid=CA:en', isVisible: true, isCustom: false },
   { id: 'VANCOUVER', label: 'Vancouver (Local)', file: './data/news_vancouver.json', url: 'https://news.google.com/rss/search?q=Vancouver&hl=en-CA&gl=CA&ceid=CA:en', isVisible: true, isCustom: false },
   { id: 'BC', label: 'British Columbia (Local)', file: './data/news_bc.json', url: 'https://news.google.com/rss/search?q=%22British+Columbia%22&hl=en-CA&gl=CA&ceid=CA:en', isVisible: true, isCustom: false },
