@@ -83,7 +83,7 @@ test('the JSON fallback unwraps a proxy response and works for feed verification
     throw new Error('Unexpected provider');
   });
   const result = await verifyFeed('https://example.com/atom.xml');
-  assert.deepEqual(result, { ok: true, count: 1, title: 'Example Atom Feed' });
+  assert.deepEqual(result, { ok: true, count: 1, title: 'Example Atom Feed', newestPubDate: story.pubDate, stale: false });
   assert.ok(urls.some((url) => url.includes('allorigins.win') && decodeURIComponent(url).includes('feed2json.org')));
   assert.equal(urls.filter((url) => url.includes('rss2json.com')).length, 1, 'Verification must not retry the same failed converter twice');
 });
@@ -229,7 +229,7 @@ test('a broken first converter falls back and malformed entries cannot discard v
     ? json({ status: 'ok', items: [null, { title: 'Invalid', link: '/relative' }] })
     : json({ contents: JSON.stringify({ title: 'Healthy fallback', items: [null, {}, story] }) }));
   const result = await verifyFeed('https://example.com/partial-payload.xml');
-  assert.deepEqual(result, { ok: true, count: 1, title: 'Healthy fallback' });
+  assert.deepEqual(result, { ok: true, count: 1, title: 'Healthy fallback', newestPubDate: story.pubDate, stale: false });
 });
 
 function sourcePair() {

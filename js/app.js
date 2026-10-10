@@ -47,7 +47,11 @@ import {
   deleteCustomSource,
   getSourceById,
   getFeedsByIds,
+  getSourceLibrary,
+  isSourceEnabled,
+  setSourcesEnabled,
 } from './feedRegistry.js';
+import { renderSourceGroups, groupSources } from './sourceGroups.js';
 import { initPWA } from './pwa.js';
 import { exportSettingsAsJson } from './settingsExport.js';
 import { fetchArticleImage, invalidateArticleImage } from './imageService.js';
@@ -1756,6 +1760,7 @@ async function loadHeadlines(topicId = state.currentTopic, options = {}) {
         ? 'Refresh unavailable. Keeping your current headlines.'
         : feedStatus.refreshFailed
           ? `Refresh unavailable. Showing saved headlines from ${time}.`
+          : feedStatus.source === 'disabled' ? 'All sources for this topic are disabled. Enable sources in the RSS Sources library.'
           : `${feedStatus.source === 'live' ? 'Updated' : 'Saved headlines from'} ${time}${recovered ? ` · ${recovered} source${recovered === 1 ? '' : 's'} using saved headlines` : ''}${unavailable ? ` · ${unavailable} source${unavailable === 1 ? '' : 's'} unavailable` : ''}`;
       elements.feedUpdateStatus.title = failed.map((feed) => `${feed.name}: ${feed.error}`).join('\n');
     }
@@ -2126,168 +2131,185 @@ const selectedTopicSourceIds = new Set();
  * Renders the interactive source checklist in the New Topic tab.
  * @param {string} [filterText]
  */
+function sourceSearchValue(element) {
+  return element ? element.value.trim() : '';
+}
+
+function visibleLibrarySources(filterText) {
+  return groupSources(getSourceLibrary(), filterText).flatMap(group => [...group.aggregator, ...group.publisher]);
+}
+
 function renderTopicSourcesChecklist(filterText = '') {
   if (!elements.topicSourcesChecklist) return;
   const sources = getAllSources();
-  elements.topicSourcesChecklist.innerHTML = '';
-
-  const query = (filterText || '').toLowerCase().trim();
-  const filtered = sources.filter((s) => {
-    if (!query) return true;
-    return (s.name && s.name.toLowerCase().includes(query)) ||
-           (s.url && s.url.toLowerCase().includes(query)) ||
-           (s.id && s.id.toLowerCase().includes(query));
-  });
-
-  if (filtered.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'source-check-empty';
-    empty.textContent = query ? `No sources match "${filterText}"` : 'No RSS sources available.';
-    elements.topicSourcesChecklist.appendChild(empty);
-    return;
-  }
-
-  filtered.forEach((source) => {
-    const isChecked = selectedTopicSourceIds.has(source.id);
-
-    const label = document.createElement('label');
-    label.className = `source-check-item ${isChecked ? 'checked' : ''}`;
-
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.className = 'source-checkbox';
-    cb.value = source.id;
-    cb.checked = isChecked;
-
-    cb.addEventListener('change', () => {
-      if (cb.checked) {
-        selectedTopicSourceIds.add(source.id);
-        label.classList.add('checked');
-      } else {
-        selectedTopicSourceIds.delete(source.id);
-        label.classList.remove('checked');
-      }
-    });
-
-    const infoDiv = document.createElement('div');
-    infoDiv.className = 'source-check-details';
-
-    const titleRow = document.createElement('div');
-    titleRow.className = 'source-check-title-row';
-
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'source-check-name';
-    nameSpan.textContent = source.name;
-    titleRow.appendChild(nameSpan);
-
-    if (source.isCustom) {
-      const customTag = document.createElement('span');
-      customTag.className = 'source-catalog-badge badge-custom';
-      customTag.textContent = 'Custom';
-      titleRow.appendChild(customTag);
-    }
-
-    infoDiv.appendChild(titleRow);
-
-    const metaSpan = document.createElement('span');
-    metaSpan.className = 'source-check-meta';
-    try {
-      metaSpan.textContent = new URL(source.url).hostname;
-    } catch {
-      metaSpan.textContent = source.url;
-    }
-    infoDiv.appendChild(metaSpan);
-
-    label.appendChild(cb);
-    label.appendChild(infoDiv);
-    elements.topicSourcesChecklist.appendChild(label);
+  renderSourceGroups(elements.topicSourcesChecklist, sources, {
+    filterText,
+    isSelected: source => isSourceEnabled(source) && selectedTopicSourceIds.has(source.id),
+    canSelect: isSourceEnabled,
+    onToggle(feeds, checked) {
+      feeds.forEach(source => checked ? selectedTopicSourceIds.add(source.id) : selectedTopicSourceIds.delete(source.id));
+      renderTopicSourcesChecklist(filterText);
+    },
+    renderRow(source, refreshCounts) {
+      const checked = isSourceEnabled(source) && selectedTopicSourceIds.has(source.id);
+      const label = document.createElement('label');
+      label.className = `source-check-item ${checked ? 'checked' : ''}`;
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = source.id;
+      checkbox.setAttribute('aria-label', `Select ${source.name}`);
+      checkbox.checked = checked;
+      checkbox.disabled = !isSourceEnabled(source);
+      checkbox.addEventListener('change', () => {
+        checkbox.checked ? selectedTopicSourceIds.add(source.id) : selectedTopicSourceIds.delete(source.id);
+        label.classList.toggle('checked', checkbox.checked);
+        refreshCounts();
+      });
+      const info = document.createElement('div');
+      info.className = 'source-check-info';
+      const name = document.createElement('span');
+      name.className = 'source-check-name';
+      name.textContent = source.name;
+      const meta = document.createElement('span');
+      meta.className = 'source-check-domain';
+      meta.textContent = checkbox.disabled ? 'Disabled in source library' : source.domain || source.url;
+      info.appendChild(name);
+      info.appendChild(meta);
+      label.appendChild(checkbox);
+      label.appendChild(info);
+      return label;
+    },
   });
 }
 
-/**
- * Renders the RSS sources catalog in the RSS Sources tab.
- * @param {string} [filterText]
- */
+const sourceHealth = new Map();
+let sourceRefreshTimer = null;
+let checkingSources = false;
+
+function changeLibrarySources(feeds, enabled) {
+  // Ignore any request started before the selection changed.
+  headlinesRequestId++;
+  const stored = setSourcesEnabled(feeds, enabled);
+  renderSourcesCatalog(sourceSearchValue(elements.inputSourceCatalogSearch));
+  renderTopicSourcesChecklist(sourceSearchValue(elements.inputTopicSourceSearch));
+  if (!stored) showToast('Source selection kept for this session; browser storage is unavailable.');
+  // Clear the old feed immediately so disabled sources cannot linger through a failed refresh.
+  state.rawArticles = [];
+  state.articles = [];
+  state.displayedTopic = null;
+  applySortAndRender();
+  clearTimeout(sourceRefreshTimer);
+  sourceRefreshTimer = setTimeout(() => loadHeadlines(state.currentTopic), 250);
+}
+
 function renderSourcesCatalog(filterText = '') {
   if (!elements.sourcesCatalogList) return;
-  const sources = getAllSources();
-
+  const sources = getSourceLibrary();
   if (elements.sourcesCountBadge) {
-    elements.sourcesCountBadge.textContent = `${sources.length} sources`;
+    elements.sourcesCountBadge.textContent = `${sources.filter(source => source.enabled).length}/${sources.length} enabled`;
   }
-
-  elements.sourcesCatalogList.innerHTML = '';
-  const query = (filterText || '').toLowerCase().trim();
-  const filtered = sources.filter((s) => {
-    if (!query) return true;
-    return (s.name && s.name.toLowerCase().includes(query)) ||
-           (s.url && s.url.toLowerCase().includes(query)) ||
-           (s.id && s.id.toLowerCase().includes(query));
+  renderSourceGroups(elements.sourcesCatalogList, sources, {
+    filterText, isSelected: isSourceEnabled, onToggle: changeLibrarySources,
+    renderRow(source) {
+      const row = document.createElement('div');
+      row.className = 'source-catalog-row';
+      row.setAttribute('data-source-id', source.id);
+      const label = document.createElement('label');
+      label.className = 'source-catalog-choice';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = source.enabled;
+      checkbox.setAttribute('aria-label', `Enable ${source.name}`);
+      checkbox.addEventListener('change', () => changeLibrarySources([source], checkbox.checked));
+      const info = document.createElement('div');
+      info.className = 'source-catalog-info';
+      const name = document.createElement('span');
+      name.className = 'source-catalog-name';
+      name.textContent = source.name;
+      const meta = document.createElement('span');
+      meta.className = 'source-catalog-url';
+      meta.textContent = source.isPrimary ? 'Curated Google News feeds and keyword searches' : source.domain || source.url;
+      meta.title = source.url;
+      const health = document.createElement('span');
+      health.className = 'source-health-status';
+      const result = sourceHealth.get(source.url);
+      health.textContent = result ? result.status === 'checking' ? 'Checking…'
+        : result.ok ? `${result.count} headlines · ${result.stale ? 'feed appears stale' : 'available'}${result.newestPubDate ? ` · newest ${new Date(result.newestPubDate).toLocaleDateString()}` : ' · dates not supplied'}` : result.error || 'Unavailable'
+        : source.isCustom ? 'Custom RSS feed' : source.isPrimary ? 'News aggregator' : `Built-in RSS feed${source.access ? ` · ${source.access}` : ''}`;
+      if (result && result.status !== 'checking') health.classList.add(result.ok && !result.stale ? 'source-health-ok' : 'source-health-failed');
+      info.appendChild(name);
+      info.appendChild(meta);
+      info.appendChild(health);
+      label.appendChild(checkbox);
+      label.appendChild(info);
+      row.appendChild(label);
+      if (source.isCustom) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'source-delete-btn';
+        button.textContent = 'Delete';
+        button.setAttribute('aria-label', `Delete ${source.name}`);
+        button.addEventListener('click', () => {
+          deleteCustomSource(source.id);
+          selectedTopicSourceIds.delete(source.id);
+          renderSourcesCatalog(filterText);
+          renderTopicSourcesChecklist(sourceSearchValue(elements.inputTopicSourceSearch));
+          renderTopicsModalTable();
+          loadHeadlines(state.currentTopic);
+          showToast(`Removed source "<strong>${escapeHtml(source.name)}</strong>"`);
+        });
+        row.appendChild(button);
+      }
+      return row;
+    },
   });
+}
 
-  if (filtered.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'sources-catalog-empty';
-    empty.textContent = query ? `No sources match "${filterText}"` : 'No RSS sources available.';
-    elements.sourcesCatalogList.appendChild(empty);
+async function checkEnabledSources() {
+  if (checkingSources) return;
+  const feeds = getSourceLibrary().filter(isSourceEnabled);
+  const button = document.getElementById('checkSourcesBtn');
+  const summary = document.getElementById('sourceCheckSummary');
+  if (!feeds.length) {
+    if (summary) summary.textContent = 'Enable at least one source to check its feed.';
     return;
   }
-
-  filtered.forEach((source) => {
-    const row = document.createElement('div');
-    row.className = 'source-catalog-row';
-    row.setAttribute('data-source-id', source.id);
-
-    const info = document.createElement('div');
-    info.className = 'source-catalog-info';
-
-    const headerLine = document.createElement('div');
-    headerLine.className = 'source-catalog-header-line';
-
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'source-catalog-name';
-    nameSpan.textContent = source.name;
-    headerLine.appendChild(nameSpan);
-
-    const badge = document.createElement('span');
-    badge.className = `source-catalog-badge ${source.isCustom ? 'badge-custom' : 'badge-builtin'}`;
-    badge.textContent = source.isCustom ? 'Custom' : 'Built-in';
-    headerLine.appendChild(badge);
-
-    info.appendChild(headerLine);
-
-    const urlSpan = document.createElement('div');
-    urlSpan.className = 'source-catalog-url';
-    urlSpan.textContent = source.url;
-    info.appendChild(urlSpan);
-
-    row.appendChild(info);
-
-    const actions = document.createElement('div');
-    actions.className = 'source-catalog-actions';
-
-    if (source.isCustom) {
-      const delBtn = document.createElement('button');
-      delBtn.type = 'button';
-      delBtn.className = 'source-delete-btn';
-      delBtn.textContent = 'Delete';
-      delBtn.title = `Delete custom source "${source.name}"`;
-      delBtn.addEventListener('click', () => {
-        deleteCustomSource(source.id);
-        selectedTopicSourceIds.delete(source.id);
-        renderSourcesCatalog(elements.inputSourceCatalogSearch ? elements.inputSourceCatalogSearch.value.trim() : '');
-        renderTopicSourcesChecklist(elements.inputTopicSourceSearch ? elements.inputTopicSourceSearch.value.trim() : '');
-        renderTopicsModalTable();
-        // If current topic is using this source, refresh
-        loadHeadlines(state.currentTopic);
-        showToast(`Removed source "<strong>${escapeHtml(source.name)}</strong>"`);
-      });
-      actions.appendChild(delBtn);
-    }
-
-    row.appendChild(actions);
-    elements.sourcesCatalogList.appendChild(row);
-  });
+  checkingSources = true;
+  if (button) button.disabled = true;
+  let next = 0, completed = 0, passed = 0, skipped = 0;
+  const update = () => {
+    if (summary) summary.textContent = `Checked ${completed}/${feeds.length}: ${passed} available, ${completed - passed - skipped} stale or unavailable${skipped ? `, ${skipped} skipped` : ''}.`;
+    renderSourcesCatalog(sourceSearchValue(elements.inputSourceCatalogSearch));
+  };
+  update();
+  try {
+    await Promise.all(Array.from({ length: Math.min(4, feeds.length) }, async () => {
+      while (next < feeds.length) {
+        const feed = feeds[next++];
+        if (!isSourceEnabled(feed)) {
+          skipped++;
+          completed++;
+          update();
+          continue;
+        }
+        sourceHealth.set(feed.url, { status: 'checking' });
+        update();
+        try {
+          const result = await verifyFeed(feed.url);
+          sourceHealth.set(feed.url, { ...result, status: 'checked' });
+          if (result.ok && !result.stale) passed++;
+        } catch (error) {
+          sourceHealth.set(feed.url, { ok: false, status: 'checked', error: error.message });
+        }
+        completed++;
+        update();
+      }
+    }));
+  } finally {
+    checkingSources = false;
+    if (button) button.disabled = false;
+    if (summary) summary.textContent += ' RSS availability can differ between this browser and the scheduled server.';
+  }
 }
 
 /**
@@ -2807,14 +2829,18 @@ function setupEventListeners() {
 
   if (elements.btnSelectAllSources) {
     elements.btnSelectAllSources.addEventListener('click', () => {
-      getAllSources().forEach((s) => selectedTopicSourceIds.add(s.id));
+      groupSources(getAllSources(), sourceSearchValue(elements.inputTopicSourceSearch))
+        .flatMap(group => [...group.aggregator, ...group.publisher]).filter(isSourceEnabled)
+        .forEach(source => selectedTopicSourceIds.add(source.id));
       renderTopicSourcesChecklist(elements.inputTopicSourceSearch ? elements.inputTopicSourceSearch.value.trim() : '');
     });
   }
 
   if (elements.btnClearAllSources) {
     elements.btnClearAllSources.addEventListener('click', () => {
-      selectedTopicSourceIds.clear();
+      groupSources(getAllSources(), sourceSearchValue(elements.inputTopicSourceSearch))
+        .flatMap(group => [...group.aggregator, ...group.publisher])
+        .forEach(source => selectedTopicSourceIds.delete(source.id));
       renderTopicSourcesChecklist(elements.inputTopicSourceSearch ? elements.inputTopicSourceSearch.value.trim() : '');
     });
   }
@@ -2907,6 +2933,12 @@ function setupEventListeners() {
       }
     });
   }
+
+  document.getElementById('enableVisibleSourcesBtn')?.addEventListener('click', () =>
+    changeLibrarySources(visibleLibrarySources(sourceSearchValue(elements.inputSourceCatalogSearch)), true));
+  document.getElementById('disableVisibleSourcesBtn')?.addEventListener('click', () =>
+    changeLibrarySources(visibleLibrarySources(sourceSearchValue(elements.inputSourceCatalogSearch)), false));
+  document.getElementById('checkSourcesBtn')?.addEventListener('click', checkEnabledSources);
 
   // RSS Sources Catalog Search
   if (elements.inputSourceCatalogSearch) {

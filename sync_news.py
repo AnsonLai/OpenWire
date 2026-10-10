@@ -54,99 +54,23 @@ TOPICS = {
     "science": "https://news.google.com/rss/headlines/section/topic/SCIENCE",
     "entertainment": "https://news.google.com/rss/headlines/section/topic/ENTERTAINMENT",
     "sports": "https://news.google.com/rss/headlines/section/topic/SPORTS",
+    "politics": "https://news.google.com/rss/search?q=politics+OR+government&hl=en-US&gl=US&ceid=US:en",
+    "finance": "https://news.google.com/rss/search?q=financial+markets+OR+investing+OR+banking&hl=en-US&gl=US&ceid=US:en",
+    "lifestyle": "https://news.google.com/rss/search?q=lifestyle+OR+fashion+OR+design&hl=en-US&gl=US&ceid=US:en",
 }
 
-# High-Quality Secondary Direct RSS Feeds mapped by topic
-# Each feed has a fair-share limit to augment the list without overwhelming it (7-10 quota)
+# The browser, scheduled snapshots and feed audit use the same catalog.
+def read_feed_catalog():
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'js', 'feedCatalog.js')
+    with open(path, encoding='utf-8') as source:
+        payload = source.read().split('export const FEED_CATALOG = ', 1)[1].strip().removesuffix(';')
+    return json.loads(payload)
+
+
 SECONDARY_FEEDS = {
-    "top": [
-        {"name": "CBC News", "domain": "cbc.ca", "url": "https://www.cbc.ca/cmlink/rss-topstories", "limit": 10},
-        {"name": "Global News", "domain": "globalnews.ca", "url": "https://globalnews.ca/feed/", "limit": 8},
-        {"name": "New York Times", "domain": "nytimes.com", "url": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml", "limit": 10},
-        {"name": "BBC News", "domain": "bbc.co.uk", "url": "https://feeds.bbci.co.uk/news/rss.xml", "limit": 10},
-        {"name": "CNBC", "domain": "cnbc.com", "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html", "limit": 8},
-        {"name": "Fox News", "domain": "foxnews.com", "url": "http://feeds.foxnews.com/foxnews/latest", "limit": 8},
-        {"name": "Politico", "domain": "politico.com", "url": "https://rss.politico.com/playbook.xml", "limit": 7},
-        {"name": "ABC News", "domain": "abcnews.go.com", "url": "https://abcnews.go.com/abcnews/topstories", "limit": 8},
-        {"name": "Al Jazeera", "domain": "aljazeera.com", "url": "https://www.aljazeera.com/xml/rss/all.xml", "limit": 8},
-        {"name": "The Japan Times", "domain": "japantimes.co.jp", "url": "https://www.japantimes.co.jp/feed/", "limit": 7},
-        {"name": "South China Morning Post (Asia)", "domain": "scmp.com", "url": "https://www.scmp.com/rss/3/feed", "limit": 8},
-        {"name": "CNA", "domain": "channelnewsasia.com", "url": "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml", "limit": 8},
-        {"name": "Deutsche Welle", "domain": "dw.com", "url": "https://rss.dw.com/xml/rss-en-all", "limit": 8},
-        {"name": "France 24", "domain": "france24.com", "url": "https://www.france24.com/en/rss", "limit": 8},
-    ],
-    "latest": [
-        {"name": "CBC News", "domain": "cbc.ca", "url": "https://www.cbc.ca/cmlink/rss-topstories", "limit": 10},
-        {"name": "Global News", "domain": "globalnews.ca", "url": "https://globalnews.ca/feed/", "limit": 8},
-        {"name": "New York Times", "domain": "nytimes.com", "url": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml", "limit": 10},
-        {"name": "BBC News", "domain": "bbc.co.uk", "url": "https://feeds.bbci.co.uk/news/rss.xml", "limit": 10},
-        {"name": "CNBC", "domain": "cnbc.com", "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html", "limit": 8},
-        {"name": "ABC News", "domain": "abcnews.go.com", "url": "https://abcnews.go.com/abcnews/topstories", "limit": 8},
-        {"name": "Fox News", "domain": "foxnews.com", "url": "http://feeds.foxnews.com/foxnews/latest", "limit": 8},
-        {"name": "Al Jazeera", "domain": "aljazeera.com", "url": "https://www.aljazeera.com/xml/rss/all.xml", "limit": 8},
-        {"name": "The Japan Times", "domain": "japantimes.co.jp", "url": "https://www.japantimes.co.jp/feed/", "limit": 7},
-        {"name": "South China Morning Post (Asia)", "domain": "scmp.com", "url": "https://www.scmp.com/rss/3/feed", "limit": 8},
-        {"name": "CNA", "domain": "channelnewsasia.com", "url": "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml", "limit": 8},
-        {"name": "Deutsche Welle", "domain": "dw.com", "url": "https://rss.dw.com/xml/rss-en-all", "limit": 8},
-        {"name": "France 24", "domain": "france24.com", "url": "https://www.france24.com/en/rss", "limit": 8},
-    ],
-    "canada": [
-        {"name": "CBC Canada", "domain": "cbc.ca", "url": "https://www.cbc.ca/cmlink/rss-canada", "limit": 10},
-        {"name": "Global News Canada", "domain": "globalnews.ca", "url": "https://globalnews.ca/feed/", "limit": 8},
-    ],
-    "vancouver": [
-        {"name": "CBC British Columbia", "domain": "cbc.ca", "url": "https://www.cbc.ca/cmlink/rss-canada-britishcolumbia", "limit": 10},
-        {"name": "Global News BC", "domain": "globalnews.ca", "url": "https://globalnews.ca/bc/feed/", "limit": 9},
-    ],
-    "bc": [
-        {"name": "CBC British Columbia", "domain": "cbc.ca", "url": "https://www.cbc.ca/cmlink/rss-canada-britishcolumbia", "limit": 10},
-        {"name": "Global News BC", "domain": "globalnews.ca", "url": "https://globalnews.ca/bc/feed/", "limit": 9},
-    ],
-    "business": [
-        {"name": "Investing.com", "domain": "investing.com", "url": "https://www.investing.com/rss/news.rss", "limit": 9},
-        {"name": "Bloomberg Quicktake", "domain": "youtube.com", "url": "https://www.youtube.com/feeds/videos.xml?user=Bloomberg", "limit": 8},
-        {"name": "CNBC", "domain": "cnbc.com", "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html", "limit": 8},
-        {"name": "BBC Business", "domain": "bbc.co.uk", "url": "https://feeds.bbci.co.uk/news/business/rss.xml", "limit": 8},
-        {"name": "CBC Business", "domain": "cbc.ca", "url": "https://www.cbc.ca/cmlink/rss-business", "limit": 8},
-    ],
-    "technology": [
-        {"name": "Ars Technica", "domain": "arstechnica.com", "url": "http://feeds.arstechnica.com/arstechnica/index", "limit": 9},
-        {"name": "The Verge", "domain": "youtube.com", "url": "https://www.youtube.com/feeds/videos.xml?user=TheVerge", "limit": 8},
-        {"name": "Gizmodo", "domain": "gizmodo.com", "url": "https://gizmodo.com/rss", "limit": 8},
-        {"name": "Hacker News", "domain": "ycombinator.com", "url": "https://news.ycombinator.com/rss", "limit": 8},
-        {"name": "Slashdot", "domain": "slashdot.org", "url": "http://rss.slashdot.org/Slashdot/slashdotMain", "limit": 8},
-        {"name": "BBC Technology", "domain": "bbc.co.uk", "url": "https://feeds.bbci.co.uk/news/technology/rss.xml", "limit": 8},
-        {"name": "CBC Tech", "domain": "cbc.ca", "url": "https://www.cbc.ca/cmlink/rss-technology", "limit": 7},
-    ],
-    "world": [
-        {"name": "BBC World", "domain": "bbc.co.uk", "url": "http://feeds.bbci.co.uk/news/world/rss.xml", "limit": 10},
-        {"name": "The Guardian World", "domain": "theguardian.com", "url": "https://www.theguardian.com/world/rss", "limit": 9},
-        {"name": "New York Times World", "domain": "nytimes.com", "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "limit": 9},
-        {"name": "Al Jazeera", "domain": "aljazeera.com", "url": "https://www.aljazeera.com/xml/rss/all.xml", "limit": 8},
-        {"name": "CNN World", "domain": "cnn.com", "url": "http://rss.cnn.com/rss/edition_world.rss", "limit": 8},
-        {"name": "CNBC International", "domain": "cnbc.com", "url": "https://www.cnbc.com/id/100727362/device/rss/rss.html", "limit": 7},
-        {"name": "CBC World", "domain": "cbc.ca", "url": "https://www.cbc.ca/cmlink/rss-world", "limit": 7},
-        {"name": "ABC World News", "domain": "abcnews.go.com", "url": "https://abcnews.go.com/abcnews/internationalheadlines", "limit": 7},
-        {"name": "The Japan Times", "domain": "japantimes.co.jp", "url": "https://www.japantimes.co.jp/feed/", "limit": 7},
-        {"name": "South China Morning Post (Asia)", "domain": "scmp.com", "url": "https://www.scmp.com/rss/3/feed", "limit": 8},
-        {"name": "CNA World", "domain": "channelnewsasia.com", "url": "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6311", "limit": 7},
-        {"name": "Deutsche Welle", "domain": "dw.com", "url": "https://rss.dw.com/xml/rss-en-all", "limit": 8},
-        {"name": "France 24", "domain": "france24.com", "url": "https://www.france24.com/en/rss", "limit": 8},
-        {"name": "Le Monde (International)", "domain": "lemonde.fr", "url": "https://www.lemonde.fr/en/international/rss_full.xml", "limit": 7},
-        {"name": "Le Monde (Europe)", "domain": "lemonde.fr", "url": "https://www.lemonde.fr/en/europe/rss_full.xml", "limit": 7},
-    ],
-    "science": [
-        {"name": "BBC Science", "domain": "bbc.co.uk", "url": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml", "limit": 9},
-        {"name": "Ars Technica Science", "domain": "arstechnica.com", "url": "http://feeds.arstechnica.com/arstechnica/index", "limit": 8},
-    ],
-    "entertainment": [
-        {"name": "BBC Entertainment", "domain": "bbc.co.uk", "url": "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml", "limit": 8},
-        {"name": "ABC Entertainment", "domain": "abcnews.go.com", "url": "https://abcnews.go.com/abcnews/entertainmentheadlines", "limit": 8},
-    ],
-    "sports": [
-        {"name": "CBC Sports", "domain": "cbc.ca", "url": "https://www.cbc.ca/cmlink/rss-sports", "limit": 9},
-        {"name": "ABC Sports", "domain": "abcnews.go.com", "url": "https://abcnews.go.com/abcnews/sportsheadlines", "limit": 8},
-    ],
+    topic: [{**feed, "limit": feed["maxArticles"]} for feed in read_feed_catalog()
+            if feed.get("enabled", True) and topic.upper() in feed.get("topics", [])]
+    for topic in TOPICS
 }
 
 # Proven domain strategies
@@ -819,6 +743,7 @@ def process_direct_feed(feed_cfg: dict, topic_name: str) -> list:
         art = build_article_record(topic_name, idx, clean_title, feed_name, link, pub_date, image_url)
         art['summary'] = extract_feed_preview(item)
         art["id"] = art_id
+        art["feedUrl"] = feed_cfg["url"]
         articles.append(art)
 
     # For articles still missing an image (e.g. Al Jazeera, Politico), extract OG image concurrently
@@ -993,6 +918,8 @@ def process_topic(topic_name: str, primary_url: str) -> list:
             print(f"XML parse error for Google News in {topic_name}: {e}")
             primary_error = "The publisher returned an unreadable feed."
 
+    for article in google_articles:
+        article["feedUrl"] = primary_url
     updated_at = int(datetime.now(timezone.utc).timestamp() * 1000)
     source_statuses.append({"name": "Google News", "url": primary_url,
                             "status": "published" if google_articles else "unavailable",
@@ -1005,7 +932,7 @@ def process_topic(topic_name: str, primary_url: str) -> list:
 
     if secondary_configs:
         print(f"Fetching {len(secondary_configs)} direct secondary feeds...")
-        with ThreadPoolExecutor(max_workers=len(secondary_configs)) as executor:
+        with ThreadPoolExecutor(max_workers=min(6, len(secondary_configs))) as executor:
             future_to_cfg = {
                 executor.submit(process_direct_feed, cfg, topic_name): cfg
                 for cfg in secondary_configs

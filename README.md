@@ -129,7 +129,7 @@ Built-in topics load fresh published snapshots or recent device data first. The 
 
 Custom feeds and topics are saved on the device and fetched using public RSS conversion services. Their availability still depends on those providers; the scheduled server-side snapshots cover the built-in feeds in `sync_news.py`.
 
-Expand **Sources** below the update time to see which publishers loaded, which are unavailable, and which are using saved headlines. **Retry sources** uses the same refresh path as the menu and pull gesture, preserving topic and sort. Scheduled snapshots include their source results too. When only some sources fail, their last successful device results can be included for up to 24 hours; their original update times are retained. A complete outage keeps the previous topic feed and does not claim a successful update. The source cache is bounded to 40 feeds with up to 60 headlines each, and storage failures do not block reading. Adding a source reports a storage error if it cannot be saved.
+Expand **Sources** below the update time to see which publishers loaded, which are unavailable, and which are using saved headlines. **Retry sources** uses the same refresh path as the menu and pull gesture, preserving topic and sort. Scheduled snapshots include their source results too. When only some sources fail, their last successful device results can be included for up to 24 hours; their original update times are retained. A complete outage keeps the previous topic feed and does not claim a successful update. The source cache is bounded to 100 feeds with up to 60 headlines each, and storage failures do not block reading. Adding a source reports a storage error if it cannot be saved.
 
 Reading and refreshing still work when browser storage is blocked. Sort and filter choices can then be kept only for the current session. Invalid saved headline records are skipped, and a browser cache failure falls back to the network.
 
@@ -158,3 +158,11 @@ python -m unittest discover -s tests -p 'test_*.py'
 ## License
 
 This project is licensed under the **GNU Affero General Public License v3.0** (AGPLv3) — see the [LICENSE](LICENSE) file for details.
+
+### Source library and expanded categories
+
+The source library groups feeds by category, then separates **News aggregators** from **Individual news feeds**. Select or deselect a category, subgroup, visible search results, or individual feed. Preferences persist on the device and apply across topics, live requests, and cached headlines. Google News can be switched off independently. Custom topic selection uses the same groups; globally disabled sources must be enabled in the library first.
+
+Politics, Finance, and Lifestyle are built-in topics alongside the existing categories. `js/feedCatalog.js` is the shared direct-feed catalog used by the browser and Python snapshot runner. Some publishers offer public RSS headlines but require subscriptions for full articles. Nature includes news and research.
+
+**Check enabled feeds** checks the browser's RSS conversion path with bounded concurrency, showing failures and feeds whose newest dated story is older than seven days. Browser providers can fail even when direct publisher RSS is healthy. For a direct HTTP audit, run `python scripts/audit_feeds.py`; it checks XML, usable headlines, and recency without fetching article pages. See [the publisher list and audit notes](research/rss-feeds.md).

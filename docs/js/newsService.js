@@ -11,7 +11,7 @@ import { fetchWithProxy } from './fetchProxy.js';
 import { getDomainRule, normalizeDomain, STRATEGIES } from './domainRegistry.js';
 import { checkArchiveIs, checkWayback } from './archiveService.js';
 import { getTopicById } from './topicRegistry.js';
-import { getFeedsForTopic, getCustomFeedsForTopic, getFeedsByIds } from './feedRegistry.js';
+import { getFeedsForTopic, getCustomFeedsForTopic, getFeedsByIds, isSourceEnabled, getDisabledSourceKeys } from './feedRegistry.js';
 import { weaveFeeds } from './feedWeaver.js';
 import { isNotLogoOrFavicon, extractImageCandidatesFromHtml } from './imageService.js';
 import { isGoogleNewsUrl, decodeEmbeddedGoogleUrl, resolvePublisherUrl } from './publisherUrlService.js';
@@ -31,6 +31,9 @@ export const TOPICS = {
   SCIENCE: { id: 'SCIENCE', label: 'Science', file: '/OpenWire/data/news_science.json', url: 'https://news.google.com/rss/headlines/section/topic/SCIENCE' },
   ENTERTAINMENT: { id: 'ENTERTAINMENT', label: 'Entertainment', file: '/OpenWire/data/news_entertainment.json', url: 'https://news.google.com/rss/headlines/section/topic/ENTERTAINMENT' },
   SPORTS: { id: 'SPORTS', label: 'Sports', file: '/OpenWire/data/news_sports.json', url: 'https://news.google.com/rss/headlines/section/topic/SPORTS' },
+  POLITICS: { id: 'POLITICS', label: 'Politics', file: '/OpenWire/data/news_politics.json', url: 'https://news.google.com/rss/search?q=politics+OR+government&hl=en-US&gl=US&ceid=US:en' },
+  FINANCE: { id: 'FINANCE', label: 'Finance', file: '/OpenWire/data/news_finance.json', url: 'https://news.google.com/rss/search?q=financial+markets+OR+investing+OR+banking&hl=en-US&gl=US&ceid=US:en' },
+  LIFESTYLE: { id: 'LIFESTYLE', label: 'Lifestyle', file: '/OpenWire/data/news_lifestyle.json', url: 'https://news.google.com/rss/search?q=lifestyle+OR+fashion+OR+design&hl=en-US&gl=US&ceid=US:en' },
 };
 
 const DEFAULT_RSS_URL = TOPICS.TOP.url;
@@ -167,7 +170,7 @@ function saveSourceCache(url, articles, updatedAt) {
   try {
     const entries = readSourceCache().filter((entry) => entry.url !== url);
     entries.unshift({ url, updatedAt, articles: articles.slice(0, 60) });
-    localStorage.setItem(SOURCE_CACHE_KEY, JSON.stringify(entries.slice(0, 40)));
+    localStorage.setItem(SOURCE_CACHE_KEY, JSON.stringify(entries.slice(0, 100)));
   } catch { /* Headlines still work when browser storage is unavailable. */ }
 }
 
@@ -201,7 +204,7 @@ function getTopicFeeds(topicId, topicConfig = getTopicById(topicId) || TOPICS[to
 function getFeedSignature(topicId) {
   const topic = getTopicById(topicId) || TOPICS[topicId] || TOPICS.TOP;
   const keywords = literalKeywords(topic.keywords);
-  return JSON.stringify({ url: topic.url, ...(keywords.length ? { keywords, previewVersion: 2 } : {}),
+  return JSON.stringify({ url: isSourceEnabled(topic.url) ? topic.url : '', ...(keywords.length ? { keywords, previewVersion: 2 } : {}),
     feeds: getTopicFeeds(topicId, topic).map((feed) => [feed.url, feed.maxArticles]) });
 }
 
@@ -281,7 +284,8 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
   const previewCandidates = keywords.length ? fetchPreviewArticles({ force: forceLive }) : Promise.resolve([]);
 
   const formatArticles = async (articles) => Promise.all((keywords.length
-    ? enrichArticlePreviews(articles, await previewCandidates) : articles).map(async (article) => {
+    ? enrichArticlePreviews(articles, await previewCandidates) : articles)
+    .filter(article => !article.feedUrl || isSourceEnabled(article.feedUrl)).map(async (article) => {
     const publisher = isGoogleNewsUrl(article.originalUrl) ? await resolvePublisherUrl(article.originalUrl) : '';
     return applyStrategyToArticle({ ...article,
       ...(publisher ? { googleNewsUrl: article.googleNewsUrl || article.originalUrl,
@@ -298,11 +302,14 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
     liveAttempted = true;
     const knownArticles = [...(Array.isArray(previousArticles) ? previousArticles.filter(article => article && typeof article === 'object') : []), ...cachedArticles];
     const configs = [
-      ...(topicConfig.url ? [{ name: topicConfig.url.includes('news.google.com') ? 'Google News' : topicConfig.label,
+      ...(topicConfig.url && isSourceEnabled(topicConfig.url) ? [{ name: topicConfig.url.includes('news.google.com') ? 'Google News' : topicConfig.label,
         url: topicConfig.url, primary: true }] : []),
       ...configuredFeeds,
     ].filter((cfg, index, all) => all.findIndex((other) => other.url === cfg.url) === index);
-    if (!configs.length) throw new Error(`No feed URL or sources configured for topic "${topicId}".`);
+    if (!configs.length) {
+      report('disabled', 0);
+      return [];
+    }
     const settled = new Array(configs.length);
     let next = 0;
     // Limit bursts against public providers while fetching independent sources.
@@ -320,7 +327,7 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
           settled[index] = { config, error: error.message, ...saved };
         }
         if (settled[index].articles) settled[index].articles = settled[index].articles.map((article, itemIndex) => ({
-          ...article, id: `art-${topicId}-${config.id || 'primary'}-${itemIndex}-${Date.now()}`,
+          ...article, feedUrl: config.url, id: `art-${topicId}-${config.id || 'primary'}-${itemIndex}-${Date.now()}`,
         }));
       }
     }));
@@ -402,11 +409,16 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
     try {
       const response = await fetch(filePath, { cache: 'no-cache', signal: AbortSignal.timeout(5000) });
       if (!response.ok) continue;
-      const data = usableSavedArticles(await response.json());
+      const rawData = usableSavedArticles(await response.json());
+      // Old snapshots cannot distinguish aggregator stories from direct feeds.
+      // Never reintroduce disabled sources through an unlabelled fallback.
+      const hasPreferences = getDisabledSourceKeys().length > 0;
+      const data = rawData.filter(article => article.feedUrl ? isSourceEnabled(article.feedUrl) : !hasPreferences);
       if (!data.length) continue;
       const updatedAt = data.reduce((latest, article) =>
         Math.max(latest, Date.parse(article.fetchedAt || article.pubDate) || 0), 0);
-      const publishedSources = Array.isArray(data[0]?.feedStatus?.sources) ? data[0].feedStatus.sources : [];
+      const publishedSources = (Array.isArray(rawData[0]?.feedStatus?.sources) ? rawData[0].feedStatus.sources : [])
+        .filter(source => source && isSourceEnabled(source.url));
       const publishedFailed = publishedSources.filter((feed) => feed?.status === 'unavailable');
       if (!fallback || updatedAt > fallback.updatedAt) fallback = {
         articles: data, updatedAt, failedFeeds: publishedFailed, sources: publishedSources,
@@ -571,7 +583,11 @@ export async function verifyFeed(feedUrl) {
   if (!feedUrl) return { ok: false, count: 0, error: 'Feed URL is missing.' };
   try {
     const articles = await fetchLiveFeedItems(feedUrl, 'VERIFY', 5000);
-    return { ok: true, count: articles.length, title: articles.feedTitle || articles[0]?.source || '' };
+    const dates = articles.map(article => Date.parse(article.pubDate)).filter(Number.isFinite);
+    const newest = dates.length ? Math.max(...dates) : 0;
+    return { ok: true, count: articles.length, title: articles.feedTitle || articles[0]?.source || '',
+      newestPubDate: newest ? new Date(newest).toISOString() : '',
+      stale: !!newest && Date.now() - newest > 7 * 24 * 60 * 60 * 1000 };
   } catch (error) {
     return { ok: false, count: 0, error: error.message || 'Unable to retrieve headlines.' };
   }

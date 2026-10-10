@@ -11,7 +11,7 @@
  */
 
 import { getAllTopics, loadTopicOrder, getLocalEdition } from './topicRegistry.js';
-import { getAllSources, getCustomFeeds } from './feedRegistry.js';
+import { getAllSources, getCustomFeeds, getDisabledSourceKeys } from './feedRegistry.js';
 import { getAllDomainRules } from './domainRegistry.js';
 
 /**
@@ -39,6 +39,7 @@ export function generateSettingsBackupObject() {
     rssFeeds: {
       sources: sources,
       customFeeds: customFeeds,
+      disabledSources: getDisabledSourceKeys(),
     },
     paywallRules: domainRules,
   };

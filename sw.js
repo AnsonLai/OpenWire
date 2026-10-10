@@ -20,6 +20,8 @@ const STATIC_ASSETS = [
   './js/topicRegistry.js',
   './js/domainRegistry.js',
   './js/feedRegistry.js',
+  './js/feedCatalog.js',
+  './js/sourceGroups.js',
   './js/feedWeaver.js',
   './js/settingsExport.js',
   './js/archiveService.js',

@@ -1,0 +1,1872 @@
+{
+  "checkedAt": "2026-10-10T05:22:01.565105+00:00",
+  "method": "Direct HTTP, parsed RSS/Atom XML and newest item within seven days; no article-page requests",
+  "passed": 69,
+  "xmlPassed": 69,
+  "total": 69,
+  "results": [
+    {
+      "id": "cbc_top",
+      "name": "CBC News",
+      "url": "https://www.cbc.ca/cmlink/rss-topstories",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.cbc.ca/webfeed/rss/rss-topstories",
+      "contentType": "application/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 10:23:47 EDT",
+        "Fri, 09 Oct 2026 09:36:32 EDT",
+        "Fri, 09 Oct 2026 22:39:26 EDT"
+      ],
+      "sampleTitles": [
+        "\u2018Not as long as I\u2019m premier\u2019: Danielle Smith rules out 2nd separation referendum if Albertans vote to remain",
+        "Anti-ICE protests continue in NYC after agents shoot man in car with child",
+        "Hurricane Isaias makes landfall on U.S. Gulf Coast as Category 2 storm"
+      ],
+      "newestItemAt": "2026-10-09T22:39:26-04:00",
+      "ageHours": 2.7,
+      "fresh": true,
+      "error": "",
+      "durationMs": 250
+    },
+    {
+      "id": "global_canada",
+      "name": "Global News Canada",
+      "url": "https://globalnews.ca/feed/",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://globalnews.ca/feed/",
+      "contentType": "application/rss+xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 10,
+      "usableCount": 10,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 05:18:14 +0000",
+        "Sat, 10 Oct 2026 02:33:23 +0000",
+        "Sat, 10 Oct 2026 02:16:45 +0000"
+      ],
+      "sampleTitles": [
+        "Lions clinch playoff spot with win over Redblacks",
+        "Winnipeg Jets suffer first regulation loss of season, falling 5-1 to Anaheim",
+        "Second crossing debate resurfaces in Central Okanagan during B.C. election campaign"
+      ],
+      "newestItemAt": "2026-10-10T05:18:14+00:00",
+      "ageHours": 0.1,
+      "fresh": true,
+      "error": "",
+      "durationMs": 203
+    },
+    {
+      "id": "nyt_top",
+      "name": "New York Times",
+      "url": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+      "contentType": "application/xml",
+      "ok": true,
+      "itemCount": 18,
+      "usableCount": 18,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 22:04:42 +0000",
+        "Fri, 09 Oct 2026 22:23:04 +0000",
+        "Fri, 09 Oct 2026 21:25:46 +0000"
+      ],
+      "sampleTitles": [
+        "Private Medicare Plans Are Raising Costs And Forcing Millions To Find New Insurance",
+        "James Talarico Returns to Senate Campaign Trail in Texas After 10-Day Absence",
+        "Paxton Said in Deposition That Donor Gave Him Stocks to Please God"
+      ],
+      "newestItemAt": "2026-10-10T04:06:53+00:00",
+      "ageHours": 1.3,
+      "fresh": true,
+      "error": "",
+      "durationMs": 171
+    },
+    {
+      "id": "bbc_top",
+      "name": "BBC News",
+      "url": "https://feeds.bbci.co.uk/news/rss.xml",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://feeds.bbci.co.uk/news/rss.xml",
+      "contentType": "text/xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 32,
+      "usableCount": 32,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 04:38:20 GMT",
+        "Fri, 09 Oct 2026 22:30:22 GMT",
+        "Fri, 09 Oct 2026 21:46:19 GMT"
+      ],
+      "sampleTitles": [
+        "Trump announces deal for Russian diesel as Zelensky calls it a gift to Putin",
+        "Analysis: Trump's shock Russia deal highlights mounting pressure to curb fuel prices",
+        "NI secretary to ban the Drumcree parade"
+      ],
+      "newestItemAt": "2026-10-10T05:14:17+00:00",
+      "ageHours": 0.1,
+      "fresh": true,
+      "error": "",
+      "durationMs": 203
+    },
+    {
+      "id": "cnbc_business",
+      "name": "CNBC",
+      "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+      "category": "Business",
+      "httpStatus": 200,
+      "finalUrl": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+      "contentType": "application/xml",
+      "ok": true,
+      "itemCount": 30,
+      "usableCount": 30,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 02:09:00 GMT",
+        "Fri, 09 Oct 2026 19:18:24 GMT",
+        "Fri, 09 Oct 2026 19:25:28 GMT"
+      ],
+      "sampleTitles": [
+        "Trump's diesel agreement with Putin accused of contradicting Russia sanctions law",
+        "Americans' debt problems are flashing a warning not seen since the Great Recession",
+        "Trump Media advisor Katie Zacharia offered White House press secretary role"
+      ],
+      "newestItemAt": "2026-10-10T02:09:00+00:00",
+      "ageHours": 3.2,
+      "fresh": true,
+      "error": "",
+      "durationMs": 328
+    },
+    {
+      "id": "fox_top",
+      "name": "Fox News",
+      "url": "http://feeds.foxnews.com/foxnews/latest",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://moxie.foxnews.com/google-publisher/latest.xml",
+      "contentType": "text/xml;charset=utf-8",
+      "ok": true,
+      "itemCount": 25,
+      "usableCount": 25,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 22:42:49 -0400",
+        "Fri, 09 Oct 2026 22:15:42 -0400",
+        "Fri, 09 Oct 2026 21:45:43 -0400"
+      ],
+      "sampleTitles": [
+        "Trump rallies New York crowd for Republican Bruce Blakeman's bid to replace Gov. Kathy Hochul",
+        "An NYC Curse: Rangers top goalie dragged off ice as New York sports nightmare deepens",
+        "Trump brings Mike Tyson on stage at Syracuse rally, jokes that he is Bruce Blakeman's personal security"
+      ],
+      "newestItemAt": "2026-10-09T22:42:49-04:00",
+      "ageHours": 2.7,
+      "fresh": true,
+      "error": "",
+      "durationMs": 218
+    },
+    {
+      "id": "politico_playbook",
+      "name": "Politico",
+      "url": "https://rss.politico.com/playbook.xml",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://rss.politico.com/playbook.xml",
+      "contentType": "application/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 30,
+      "usableCount": 30,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 06:11:52 EDT",
+        "Thu, 08 Oct 2026 06:11:37 EDT",
+        "Wed, 07 Oct 2026 06:14:25 EDT"
+      ],
+      "sampleTitles": [
+        "The battle for Black voters",
+        "Knives out for Blair and LaCivita",
+        "Trump\u2019s cracking Latino coalition"
+      ],
+      "newestItemAt": "2026-10-09T06:11:52-04:00",
+      "ageHours": 19.2,
+      "fresh": true,
+      "error": "",
+      "durationMs": 125
+    },
+    {
+      "id": "abc_top",
+      "name": "ABC News",
+      "url": "https://abcnews.go.com/abcnews/topstories",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://abcnews.com/abcnews/topstories",
+      "contentType": "text/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 25,
+      "usableCount": 25,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 00:41:55 -0400",
+        "Fri, 09 Oct 2026 19:29:22 -0400",
+        "Fri, 09 Oct 2026 20:07:37 -0400"
+      ],
+      "sampleTitles": [
+        "Hurricane Isaias updates: Storm makes landfall in Florida Panhandle",
+        "LIVE:  ABC News Live",
+        "Off-duty ICE agent shot after allegedly attacking woman and her father: Police"
+      ],
+      "newestItemAt": "2026-10-10T00:41:55-04:00",
+      "ageHours": 0.7,
+      "fresh": true,
+      "error": "",
+      "durationMs": 234
+    },
+    {
+      "id": "aljazeera_top",
+      "name": "Al Jazeera",
+      "url": "https://www.aljazeera.com/xml/rss/all.xml",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.aljazeera.com/xml/rss/all.xml",
+      "contentType": "application/rss+xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 25,
+      "usableCount": 25,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 04:54:59 +0000",
+        "Sat, 10 Oct 2026 04:54:10 +0000",
+        "Sat, 10 Oct 2026 04:30:34 +0000"
+      ],
+      "sampleTitles": [
+        "Anthropic AI model submits false homicide tip to Philadelphia police",
+        "Supporters of jailed former Pakistani PM Khan marching to capital",
+        "Hours after Trump-Putin diesel deal, Ukraine strikes Russian fuel site"
+      ],
+      "newestItemAt": "2026-10-10T04:54:59+00:00",
+      "ageHours": 0.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 172
+    },
+    {
+      "id": "japan_times_top",
+      "name": "The Japan Times",
+      "url": "https://www.japantimes.co.jp/feed/",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.japantimes.co.jp/feed/",
+      "contentType": "application/rss+xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 30,
+      "usableCount": 30,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 13:29:00 +0900",
+        "Sat, 10 Oct 2026 13:29:00 +0900",
+        "Sat, 10 Oct 2026 11:04:00 +0900"
+      ],
+      "sampleTitles": [
+        "Taiwan\u2019s leader says increasing defense spending to \u2018deter war\u2019",
+        "Takaichi again in a bind as U.S. threatens to \u2018end\u2019 ICC",
+        "Anthropic cites new AI misbehavior, some on government sites"
+      ],
+      "newestItemAt": "2026-10-10T13:29:00+09:00",
+      "ageHours": 0.9,
+      "fresh": true,
+      "error": "",
+      "durationMs": 438
+    },
+    {
+      "id": "scmp_asia",
+      "name": "South China Morning Post (Asia)",
+      "url": "https://www.scmp.com/rss/3/feed",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.scmp.com/rss/3/feed/",
+      "contentType": "text/xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 50,
+      "usableCount": 50,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 05:00:09 +0000",
+        "Sat, 10 Oct 2026 04:09:39 +0000",
+        "Sat, 10 Oct 2026 04:00:18 +0000"
+      ],
+      "sampleTitles": [
+        "Could Indonesia\u2019s \u2018content governor\u2019 rival Prabowo for the presidency in 2029?",
+        "Australia says it won\u2019t buy Russian fuel despite Trump\u2019s diesel agreement",
+        "The hidden heartbreak of losing a pet in Singapore and Malaysia"
+      ],
+      "newestItemAt": "2026-10-10T05:00:09+00:00",
+      "ageHours": 0.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 734
+    },
+    {
+      "id": "cna_top",
+      "name": "CNA",
+      "url": "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml",
+      "contentType": "application/rss+xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 12:05:00 +0800",
+        "Sat, 10 Oct 2026 11:52:00 +0800",
+        "Sat, 10 Oct 2026 10:46:39 +0800"
+      ],
+      "sampleTitles": [
+        "IMH to be expanded, redeveloped by 2040 as Singapore boosts mental health capacity",
+        "From the racetrack to the wrist: 7 standout driving watches of 2026",
+        "US says China's maritime actions off Taiwan 'deeply destabilising'"
+      ],
+      "newestItemAt": "2026-10-10T12:05:00+08:00",
+      "ageHours": 1.3,
+      "fresh": true,
+      "error": "",
+      "durationMs": 110
+    },
+    {
+      "id": "dw_top",
+      "name": "Deutsche Welle",
+      "url": "https://rss.dw.com/xml/rss-en-all",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://rss.dw.com/xml/rss-en-all",
+      "contentType": "application/xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 139,
+      "usableCount": 139,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 03:50:00 GMT",
+        "Sat, 10 Oct 2026 02:58:00 GMT",
+        "Sat, 10 Oct 2026 02:21:00 GMT"
+      ],
+      "sampleTitles": [
+        "India: Delhi braces for Cockroach protest amid strict curbs",
+        "Hurricane Isaias makes landfall in Florida",
+        "Mexico: Court finds three men guilty of murder of Australian, US surfers"
+      ],
+      "newestItemAt": "2026-10-10T03:50:00+00:00",
+      "ageHours": 1.5,
+      "fresh": true,
+      "error": "",
+      "durationMs": 453
+    },
+    {
+      "id": "france24_top",
+      "name": "France 24",
+      "url": "https://www.france24.com/en/rss",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.france24.com/en/rss",
+      "contentType": "application/rss+xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 24,
+      "usableCount": 24,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 21:53:23 GMT",
+        "Fri, 09 Oct 2026 20:08:41 GMT",
+        "Fri, 09 Oct 2026 20:00:24 GMT"
+      ],
+      "sampleTitles": [
+        "South African judge awarded Nobel Peace Prize",
+        "Italy's biggest-ever wine heist",
+        "Trump strikes diesel deal with Putin, reversing years of pressure on Russia over Ukraine war"
+      ],
+      "newestItemAt": "2026-10-09T21:53:23+00:00",
+      "ageHours": 7.5,
+      "fresh": true,
+      "error": "",
+      "durationMs": 140
+    },
+    {
+      "id": "lemonde_world",
+      "name": "Le Monde (International)",
+      "url": "https://www.lemonde.fr/en/international/rss_full.xml",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.lemonde.fr/en/international/rss_full.xml",
+      "contentType": "application/xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 06:00:11 +0200",
+        "Sat, 10 Oct 2026 05:29:51 +0200",
+        "Sat, 10 Oct 2026 05:00:10 +0200"
+      ],
+      "sampleTitles": [
+        "In the occupied city of Oleshky, Ukrainians are surviving under 'desperate conditions, without running water or electricity'",
+        "ICE agents in the US are chasing Haitians: 'No one goes out anymore, the streets and churches are deserted, people are afraid of being arrested'",
+        "Firing squad and a live broadcast: As midterm elections approach, Washington stages the execution of Nidal Hasan"
+      ],
+      "newestItemAt": "2026-10-10T06:00:11+02:00",
+      "ageHours": 1.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 156
+    },
+    {
+      "id": "lemonde_europe",
+      "name": "Le Monde (Europe)",
+      "url": "https://www.lemonde.fr/en/europe/rss_full.xml",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.lemonde.fr/en/europe/rss_full.xml",
+      "contentType": "application/xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 06:00:11 +0200",
+        "Sat, 10 Oct 2026 03:41:20 +0200",
+        "Sat, 10 Oct 2026 02:58:17 +0200"
+      ],
+      "sampleTitles": [
+        "In the occupied city of Oleshky, Ukrainians are surviving under 'desperate conditions, without running water or electricity'",
+        "Denmark set to allow the return of 'physical force' to maintain order in schools",
+        "In Brussels, thousands protest against the federal government's policies"
+      ],
+      "newestItemAt": "2026-10-10T06:00:11+02:00",
+      "ageHours": 1.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 141
+    },
+    {
+      "id": "cbc_canada",
+      "name": "CBC Canada",
+      "url": "https://www.cbc.ca/cmlink/rss-canada",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.cbc.ca/webfeed/rss/rss-canada",
+      "contentType": "application/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 13:12:07 EDT",
+        "Fri, 09 Oct 2026 14:37:18 EDT",
+        "Fri, 09 Oct 2026 18:34:09 EDT"
+      ],
+      "sampleTitles": [
+        "Residential school denialism shouldn't be illegal, Manitoba Premier Wab Kinew says",
+        "A Newfoundlander got a random call from a bunch of Hollywood stars \u2014 and just went with it",
+        "Man admits to 5 sex assaults near Winnipeg's Health Sciences Centre, including one against 14-year-old girl"
+      ],
+      "newestItemAt": "2026-10-09T19:02:42-04:00",
+      "ageHours": 6.3,
+      "fresh": true,
+      "error": "",
+      "durationMs": 203
+    },
+    {
+      "id": "cbc_bc",
+      "name": "CBC British Columbia",
+      "url": "https://www.cbc.ca/cmlink/rss-canada-britishcolumbia",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.cbc.ca/webfeed/rss/rss-canada-britishcolumbia",
+      "contentType": "application/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 22:39:54 EDT",
+        "Fri, 09 Oct 2026 21:25:20 EDT",
+        "Sat, 10 Oct 2026 00:39:25 EDT"
+      ],
+      "sampleTitles": [
+        "Strong winds topple trees, knock out power to thousands in B.C.'s Lower Mainland",
+        "Crackdown on seatbelts, distracted driving sees number of tickets double in B.C.",
+        "Officials adjust border crossing hours as B.C. drops seasonal time change"
+      ],
+      "newestItemAt": "2026-10-10T00:39:25-04:00",
+      "ageHours": 0.7,
+      "fresh": true,
+      "error": "",
+      "durationMs": 156
+    },
+    {
+      "id": "global_bc",
+      "name": "Global News BC",
+      "url": "https://globalnews.ca/bc/feed/",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://globalnews.ca/bc/feed/",
+      "contentType": "application/rss+xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 10,
+      "usableCount": 10,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 22:53:26 +0000",
+        "Fri, 09 Oct 2026 22:17:51 +0000",
+        "Fri, 09 Oct 2026 22:00:41 +0000"
+      ],
+      "sampleTitles": [
+        "Bayside Lounge to close after 47 years as costs rise in Vancouver",
+        "B.C. leaders on the campaign trail talk health care and supporting seniors",
+        "WATCH: Global News Hour at 6 BC: Oct. 9"
+      ],
+      "newestItemAt": "2026-10-09T22:53:26+00:00",
+      "ageHours": 6.5,
+      "fresh": true,
+      "error": "",
+      "durationMs": 62
+    },
+    {
+      "id": "bbc_world",
+      "name": "BBC World",
+      "url": "http://feeds.bbci.co.uk/news/world/rss.xml",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "contentType": "text/xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 36,
+      "usableCount": 36,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 04:38:20 GMT",
+        "Fri, 09 Oct 2026 22:30:22 GMT",
+        "Sat, 10 Oct 2026 02:02:54 GMT"
+      ],
+      "sampleTitles": [
+        "Trump announces deal for Russian diesel as Zelensky calls it a gift to Putin",
+        "Analysis: Trump's shock Russia deal highlights mounting pressure to curb fuel prices",
+        "US country music star Ella Langley cancels show due to 'security threat'"
+      ],
+      "newestItemAt": "2026-10-10T04:51:57+00:00",
+      "ageHours": 0.5,
+      "fresh": true,
+      "error": "",
+      "durationMs": 141
+    },
+    {
+      "id": "guardian_world",
+      "name": "The Guardian World",
+      "url": "https://www.theguardian.com/world/rss",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.theguardian.com/world/rss",
+      "contentType": "text/xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 45,
+      "usableCount": 45,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 21:36:18 GMT",
+        "Fri, 09 Oct 2026 16:30:09 GMT",
+        "Fri, 09 Oct 2026 09:59:06 GMT"
+      ],
+      "sampleTitles": [
+        "Controversial vaccine trial touted by RFK Jr gets go-ahead in Guinea-Bissau",
+        "ICJ judge Navi Pillay wins Nobel peace prize for promoting international law",
+        "Isaias strengthens to become first Atlantic hurricane of 2026 season"
+      ],
+      "newestItemAt": "2026-10-10T05:00:48+00:00",
+      "ageHours": 0.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 94
+    },
+    {
+      "id": "nyt_world",
+      "name": "New York Times World",
+      "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+      "contentType": "application/xml",
+      "ok": true,
+      "itemCount": 58,
+      "usableCount": 58,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 23:00:44 +0000",
+        "Fri, 09 Oct 2026 15:17:55 +0000",
+        "Fri, 09 Oct 2026 14:58:45 +0000"
+      ],
+      "sampleTitles": [
+        "Human Rights Lawyer Navi Pillay Is Awarded Nobel Peace Prize",
+        "Days of Deadly Houthi Attacks Show Saudi Arabia\u2019s Vulnerabilities",
+        "Palestinian Authority Says Elections Are to Be Postponed"
+      ],
+      "newestItemAt": "2026-10-10T05:01:50+00:00",
+      "ageHours": 0.3,
+      "fresh": true,
+      "error": "",
+      "durationMs": 78
+    },
+    {
+      "id": "cnbc_world",
+      "name": "CNBC International",
+      "url": "https://www.cnbc.com/id/100727362/device/rss/rss.html",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.cnbc.com/id/100727362/device/rss/rss.html",
+      "contentType": "application/xml",
+      "ok": true,
+      "itemCount": 30,
+      "usableCount": 30,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 18:52:49 GMT",
+        "Fri, 09 Oct 2026 20:20:57 GMT",
+        "Sat, 10 Oct 2026 02:09:00 GMT"
+      ],
+      "sampleTitles": [
+        "Tanker attacks in Strait of Hormuz surge to wartime high as Iran tries to choke off oil exports",
+        "Trump strikes deal with Putin to supply Russian diesel to U.S. and global markets",
+        "Trump's diesel agreement with Putin accused of contradicting Russia sanctions law"
+      ],
+      "newestItemAt": "2026-10-10T02:09:00+00:00",
+      "ageHours": 3.2,
+      "fresh": true,
+      "error": "",
+      "durationMs": 157
+    },
+    {
+      "id": "cbc_world",
+      "name": "CBC World",
+      "url": "https://www.cbc.ca/cmlink/rss-world",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.cbc.ca/webfeed/rss/rss-world",
+      "contentType": "application/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 22:39:26 EDT",
+        "Fri, 09 Oct 2026 12:01:36 EDT",
+        "Fri, 09 Oct 2026 16:57:03 EDT"
+      ],
+      "sampleTitles": [
+        "Hurricane Isaias makes landfall on U.S. Gulf Coast as Category 2 storm",
+        "Trump administration hits International Criminal Court with sweeping sanctions",
+        "Powerful earthquake hits Panama, triggers tsunami warnings"
+      ],
+      "newestItemAt": "2026-10-09T22:39:26-04:00",
+      "ageHours": 2.7,
+      "fresh": true,
+      "error": "",
+      "durationMs": 171
+    },
+    {
+      "id": "abc_world",
+      "name": "ABC World News",
+      "url": "https://abcnews.go.com/abcnews/internationalheadlines",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://abcnews.com/abcnews/internationalheadlines",
+      "contentType": "text/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 25,
+      "usableCount": 25,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 02:43:12 -0400",
+        "Fri, 09 Oct 2026 13:49:08 -0400",
+        "Fri, 09 Oct 2026 11:24:08 -0400"
+      ],
+      "sampleTitles": [
+        "Heavy rain batters Chile\u2019s capital, sweeping away cars and flooding homes",
+        "Thieves pull off Italy's biggest-ever wine heist, stealing 30,000 bottles worth 5 million euros",
+        "Australian bishop acknowledges 8-year delay in justice in Indigenous abuse case but defends process"
+      ],
+      "newestItemAt": "2026-10-10T00:23:14-04:00",
+      "ageHours": 1.0,
+      "fresh": true,
+      "error": "",
+      "durationMs": 172
+    },
+    {
+      "id": "investing_all",
+      "name": "Investing.com",
+      "url": "https://www.investing.com/rss/news.rss",
+      "category": "Business",
+      "httpStatus": 200,
+      "finalUrl": "https://www.investing.com/rss/news.rss",
+      "contentType": "application/rss+xml",
+      "ok": true,
+      "itemCount": 10,
+      "usableCount": 10,
+      "sampleDates": [
+        "2026-10-10 05:01:44",
+        "2026-10-10 04:31:39",
+        "2026-10-10 03:59:57"
+      ],
+      "sampleTitles": [
+        "Trump vows quick end to Iran war as fighting in Yemen intensifies",
+        "French fiscal risks raise chance of ECB pause after December",
+        "Bitcoin trades above $82,000 as rising oil prices, Fed outlook weigh"
+      ],
+      "newestItemAt": "2026-10-10T05:01:44+00:00",
+      "ageHours": 0.3,
+      "fresh": true,
+      "error": "",
+      "durationMs": 109
+    },
+    {
+      "id": "bbc_business",
+      "name": "BBC Business",
+      "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
+      "category": "Business",
+      "httpStatus": 200,
+      "finalUrl": "https://feeds.bbci.co.uk/news/business/rss.xml",
+      "contentType": "text/xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 52,
+      "usableCount": 52,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 04:38:20 GMT",
+        "Fri, 09 Oct 2026 22:30:22 GMT",
+        "Fri, 09 Oct 2026 23:01:14 GMT"
+      ],
+      "sampleTitles": [
+        "Trump announces deal for Russian diesel as Zelensky calls it a gift to Putin",
+        "Analysis: Trump's shock Russia deal highlights mounting pressure to curb fuel prices",
+        "Boots has a new owner: Three ways it could affect you"
+      ],
+      "newestItemAt": "2026-10-10T04:38:20+00:00",
+      "ageHours": 0.7,
+      "fresh": true,
+      "error": "",
+      "durationMs": 94
+    },
+    {
+      "id": "cbc_business",
+      "name": "CBC Business",
+      "url": "https://www.cbc.ca/cmlink/rss-business",
+      "category": "Business",
+      "httpStatus": 200,
+      "finalUrl": "https://www.cbc.ca/webfeed/rss/rss-business",
+      "contentType": "application/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 08:42:10 EDT",
+        "Fri, 09 Oct 2026 04:00:00 EDT",
+        "Fri, 09 Oct 2026 09:03:11 EDT"
+      ],
+      "sampleTitles": [
+        "Canadian economy lost 68,000 jobs in September, marking second straight month of surprise declines",
+        "Canada can't launch rockets on its own. A handful of companies want to change that",
+        "Shell to buy 30% stake in proposed Bay du Nord oil project off Newfoundland"
+      ],
+      "newestItemAt": "2026-10-09T09:03:11-04:00",
+      "ageHours": 16.3,
+      "fresh": true,
+      "error": "",
+      "durationMs": 125
+    },
+    {
+      "id": "ars_technica",
+      "name": "Ars Technica",
+      "url": "http://feeds.arstechnica.com/arstechnica/index",
+      "category": "Technology",
+      "httpStatus": 200,
+      "finalUrl": "http://feeds.arstechnica.com/arstechnica/index",
+      "contentType": "text/xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 22:34:03 +0000",
+        "Fri, 09 Oct 2026 22:04:07 +0000",
+        "Fri, 09 Oct 2026 21:51:12 +0000"
+      ],
+      "sampleTitles": [
+        "Neanderthal wooden tools from Spain found preserved in stone",
+        "Ukraine\u2019s drones knock out AI data center belonging to \"Russia\u2019s Google\"",
+        "A Cray-1 supercomputer replica from 30 \"obsolete\" Mac Minis"
+      ],
+      "newestItemAt": "2026-10-09T22:34:03+00:00",
+      "ageHours": 6.8,
+      "fresh": true,
+      "error": "",
+      "durationMs": 453
+    },
+    {
+      "id": "the_verge",
+      "name": "The Verge",
+      "url": "https://www.theverge.com/rss/index.xml",
+      "category": "Technology",
+      "httpStatus": 200,
+      "finalUrl": "https://www.theverge.com/rss/index.xml",
+      "contentType": "application/xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 10,
+      "usableCount": 10,
+      "sampleDates": [
+        "2026-10-09T17:50:00-04:00",
+        "2026-10-09T17:15:38-04:00",
+        "2026-10-09T15:41:11-04:00"
+      ],
+      "sampleTitles": [
+        "Decade-old RAM is making a comeback",
+        "Anthropic\u2019s AI gave Philadelphia police a fake tip about an unsolved homicide",
+        "Ohio blogger found guilty of harassment for sending Shrek nude to senator"
+      ],
+      "newestItemAt": "2026-10-09T17:50:00-04:00",
+      "ageHours": 7.5,
+      "fresh": true,
+      "error": "",
+      "durationMs": 78
+    },
+    {
+      "id": "gizmodo",
+      "name": "Gizmodo",
+      "url": "https://gizmodo.com/rss",
+      "category": "Technology",
+      "httpStatus": 200,
+      "finalUrl": "https://gizmodo.com/feed",
+      "contentType": "application/rss+xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Thu, 08 Oct 2026 15:15:22 +0000",
+        "Sat, 10 Oct 2026 00:51:56 +0000",
+        "Sat, 10 Oct 2026 00:00:57 +0000"
+      ],
+      "sampleTitles": [
+        "Live Updates From New York Comic Con 2026 \ud83d\udd34",
+        "FCC Chair Brendan Carr Says Pete Hegseth Has Final Say On Broadcasting Fort Hood Shooter\u2019s Execution",
+        "Break Out the Blue Mushrooms: \u2018Common Side Effects\u2019 Will Return in January"
+      ],
+      "newestItemAt": "2026-10-10T00:51:56+00:00",
+      "ageHours": 4.5,
+      "fresh": true,
+      "error": "",
+      "durationMs": 422
+    },
+    {
+      "id": "hacker_news",
+      "name": "Hacker News",
+      "url": "https://news.ycombinator.com/rss",
+      "category": "Technology",
+      "httpStatus": 200,
+      "finalUrl": "https://news.ycombinator.com/rss",
+      "contentType": "application/rss+xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 30,
+      "usableCount": 30,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 04:40:36 +0000",
+        "Sat, 10 Oct 2026 00:37:07 +0000",
+        "Fri, 09 Oct 2026 13:03:48 +0000"
+      ],
+      "sampleTitles": [
+        "Lobbying",
+        "REA Reverse \u2013 Engineer Anything",
+        "Cloudflare acquires Deno"
+      ],
+      "newestItemAt": "2026-10-10T04:40:36+00:00",
+      "ageHours": 0.7,
+      "fresh": true,
+      "error": "",
+      "durationMs": 187
+    },
+    {
+      "id": "slashdot",
+      "name": "Slashdot",
+      "url": "http://rss.slashdot.org/Slashdot/slashdotMain",
+      "category": "Technology",
+      "httpStatus": 200,
+      "finalUrl": "https://rss.slashdot.org/Slashdot/slashdotMain",
+      "contentType": "text/xml",
+      "ok": true,
+      "itemCount": 15,
+      "usableCount": 15,
+      "sampleDates": [
+        "2026-10-10T03:00:00+00:00",
+        "2026-10-09T15:00:00+00:00",
+        "2026-10-09T11:00:00+00:00"
+      ],
+      "sampleTitles": [
+        "AI Surveillance Startup Flock To Cut Several Hundred Jobs Amid Backlash, Sources Say",
+        "Cloudflare Keeps 1.1.1.1 Out of Piracy Blocking, Escapes Penalties In France",
+        "A 1960 Paper Published In Science Predicts World Will End Next Month"
+      ],
+      "newestItemAt": "2026-10-10T03:00:00+00:00",
+      "ageHours": 2.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 110
+    },
+    {
+      "id": "bbc_tech",
+      "name": "BBC Technology",
+      "url": "https://feeds.bbci.co.uk/news/technology/rss.xml",
+      "category": "Technology",
+      "httpStatus": 200,
+      "finalUrl": "https://feeds.bbci.co.uk/news/technology/rss.xml",
+      "contentType": "text/xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 21,
+      "usableCount": 21,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 15:32:30 GMT",
+        "Fri, 09 Oct 2026 12:34:27 GMT",
+        "Fri, 09 Oct 2026 09:30:49 GMT"
+      ],
+      "sampleTitles": [
+        "Prize-winning image which sparked backlash was AI-generated, Nikon rules",
+        "Anthropic bans users from being 'cruel' to its AI systems",
+        "Fired OpenAI researchers say they were let go for 'prioritising safety'"
+      ],
+      "newestItemAt": "2026-10-10T01:00:00+00:00",
+      "ageHours": 4.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 250
+    },
+    {
+      "id": "cbc_tech",
+      "name": "CBC Tech",
+      "url": "https://www.cbc.ca/cmlink/rss-technology",
+      "category": "Technology",
+      "httpStatus": 200,
+      "finalUrl": "https://www.cbc.ca/webfeed/rss/rss-technology",
+      "contentType": "application/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 09:00:00 EDT",
+        "Fri, 09 Oct 2026 04:00:00 EDT",
+        "Thu, 08 Oct 2026 19:08:28 EDT"
+      ],
+      "sampleTitles": [
+        "What is your seafood eating? Investigation traces problems in global feed supply",
+        "Canada can't launch rockets on its own. A handful of companies want to change that",
+        "1st of 29 monarch butterflies tagged on Canadian Prairies reaches Mexico after perilous migration"
+      ],
+      "newestItemAt": "2026-10-09T09:00:00-04:00",
+      "ageHours": 16.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 421
+    },
+    {
+      "id": "bbc_science",
+      "name": "BBC Science",
+      "url": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+      "category": "Science",
+      "httpStatus": 200,
+      "finalUrl": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+      "contentType": "text/xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 41,
+      "usableCount": 41,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 01:58:56 GMT",
+        "Fri, 09 Oct 2026 19:11:27 GMT",
+        "Fri, 09 Oct 2026 16:46:32 GMT"
+      ],
+      "sampleTitles": [
+        "Life-threatening Hurricane Isaias makes landfall in Florida",
+        "'People don't think recycling at work is part of their job description'",
+        "Isaias becomes major category three storm before landfall"
+      ],
+      "newestItemAt": "2026-10-10T01:58:56+00:00",
+      "ageHours": 3.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 265
+    },
+    {
+      "id": "ars_science",
+      "name": "Ars Technica Science",
+      "url": "https://feeds.arstechnica.com/arstechnica/science",
+      "category": "Science",
+      "httpStatus": 200,
+      "finalUrl": "https://feeds.arstechnica.com/arstechnica/science",
+      "contentType": "text/xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 22:34:03 +0000",
+        "Fri, 09 Oct 2026 21:05:01 +0000",
+        "Fri, 09 Oct 2026 18:44:06 +0000"
+      ],
+      "sampleTitles": [
+        "Neanderthal wooden tools from Spain found preserved in stone",
+        "What's been driving Hawaii's lava fountains?",
+        "AI disqualification yields new Nikon Small World in Motion winner"
+      ],
+      "newestItemAt": "2026-10-09T22:34:03+00:00",
+      "ageHours": 6.8,
+      "fresh": true,
+      "error": "",
+      "durationMs": 235
+    },
+    {
+      "id": "bbc_entertainment",
+      "name": "BBC Entertainment",
+      "url": "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml",
+      "category": "Entertainment",
+      "httpStatus": 200,
+      "finalUrl": "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml",
+      "contentType": "text/xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 25,
+      "usableCount": 25,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 22:51:57 GMT",
+        "Fri, 09 Oct 2026 10:52:34 GMT",
+        "Thu, 08 Oct 2026 23:08:09 GMT"
+      ],
+      "sampleTitles": [
+        "Screams, haunting scenes and deadly hide-and-seek, as Celebrity Traitors heats up",
+        "Alison Hammond: 'I thought I was having heart attack on air'",
+        "Emotions run high at the round table as Celebrity Traitors banish two players"
+      ],
+      "newestItemAt": "2026-10-09T22:51:57+00:00",
+      "ageHours": 6.5,
+      "fresh": true,
+      "error": "",
+      "durationMs": 219
+    },
+    {
+      "id": "abc_entertainment",
+      "name": "ABC Entertainment",
+      "url": "https://abcnews.go.com/abcnews/entertainmentheadlines",
+      "category": "Entertainment",
+      "httpStatus": 200,
+      "finalUrl": "https://abcnews.com/abcnews/entertainmentheadlines",
+      "contentType": "text/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 25,
+      "usableCount": 25,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 09:38:34 -0400",
+        "Fri, 09 Oct 2026 07:24:05 -0400",
+        "Wed, 07 Oct 2026 20:50:14 -0400"
+      ],
+      "sampleTitles": [
+        "Lightsaber Darth Vader used in duel in 'Empire Strikes Back' goes up for auction",
+        "2 Renoir paintings stolen from a French museum have been found, 6 arrested",
+        "Skydance mashes proven properties of Paramount, Warner Bros. into a Hollywood hybrid"
+      ],
+      "newestItemAt": "2026-10-09T09:38:34-04:00",
+      "ageHours": 15.7,
+      "fresh": true,
+      "error": "",
+      "durationMs": 188
+    },
+    {
+      "id": "cbc_sports",
+      "name": "CBC Sports",
+      "url": "https://www.cbc.ca/cmlink/rss-sports",
+      "category": "Sports",
+      "httpStatus": 200,
+      "finalUrl": "https://www.cbc.ca/webfeed/rss/rss-sports",
+      "contentType": "application/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 14:47:18 EDT",
+        "Fri, 09 Oct 2026 10:50:44 EDT",
+        "Fri, 09 Oct 2026 11:40:01 EDT"
+      ],
+      "sampleTitles": [
+        "Taylor Ruck earns her second silver, Finlay Knox third bronze for Canada at swimming World Cup",
+        "Canadian NBA star Gilgeous-Alexander takes stake in Spanish soccer giant Atletico Madrid",
+        "Famed NFL coach Mike Ditka dead at 86"
+      ],
+      "newestItemAt": "2026-10-09T14:47:18-04:00",
+      "ageHours": 10.6,
+      "fresh": true,
+      "error": "",
+      "durationMs": 250
+    },
+    {
+      "id": "abc_sports",
+      "name": "ABC Sports",
+      "url": "https://abcnews.go.com/abcnews/sportsheadlines",
+      "category": "Sports",
+      "httpStatus": 200,
+      "finalUrl": "https://abcnews.com/abcnews/sportsheadlines",
+      "contentType": "text/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 25,
+      "usableCount": 25,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 00:22:00 -0400",
+        "Sat, 10 Oct 2026 00:22:10 -0400",
+        "Sat, 10 Oct 2026 00:22:08 -0400"
+      ],
+      "sampleTitles": [
+        "Valkyries secure WNBA Finals spot with OT win over the Aces, face the Dream next",
+        "Isaac Brown brings Louisville back from the brink as Cardinals pummel Florida State 44-20",
+        "Judd Caulfield scores first NHL goal to help the Ducks beat the Jets 5-1"
+      ],
+      "newestItemAt": "2026-10-10T00:22:13-04:00",
+      "ageHours": 1.0,
+      "fresh": true,
+      "error": "",
+      "durationMs": 188
+    },
+    {
+      "id": "npr_news",
+      "name": "NPR News",
+      "url": "https://feeds.npr.org/1001/rss.xml",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://feeds.npr.org/1001/rss.xml",
+      "contentType": "text/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 10,
+      "usableCount": 10,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 18:23:11 -0400",
+        "Fri, 09 Oct 2026 17:28:09 -0400",
+        "Fri, 09 Oct 2026 17:24:13 -0400"
+      ],
+      "sampleTitles": [
+        "Kalshi taps former FBI agent to fight against money laundering",
+        "Fired OpenAI employees question the company's commitment to safety",
+        "Trump says U.S. to get diesel from Russia, relaxing pressure on Moscow to ease prices before midterms"
+      ],
+      "newestItemAt": "2026-10-09T18:23:11-04:00",
+      "ageHours": 7.0,
+      "fresh": true,
+      "error": "",
+      "durationMs": 62
+    },
+    {
+      "id": "pbs_news",
+      "name": "PBS News",
+      "url": "https://www.pbs.org/newshour/feeds/rss/headlines",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.pbs.org/newshour/feeds/rss/headlines",
+      "contentType": "application/rss+xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 18:55:07 -0400",
+        "Fri, 09 Oct 2026 18:50:33 -0400",
+        "Fri, 09 Oct 2026 18:45:13 -0400"
+      ],
+      "sampleTitles": [
+        "What to expect as Hurricane Isaias bears down on the Gulf Coast as a major storm",
+        "ICE shooting of man in New York with child in his car sparks outrage",
+        "News Wrap: Trump announces diesel deal with Russia"
+      ],
+      "newestItemAt": "2026-10-09T18:55:07-04:00",
+      "ageHours": 6.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 188
+    },
+    {
+      "id": "npr_politics",
+      "name": "NPR Politics",
+      "url": "https://feeds.npr.org/1014/rss.xml",
+      "category": "Politics",
+      "httpStatus": 200,
+      "finalUrl": "https://feeds.npr.org/1014/rss.xml",
+      "contentType": "text/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 10,
+      "usableCount": 10,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 17:24:13 -0400",
+        "Fri, 09 Oct 2026 16:03:22 -0400",
+        "Fri, 09 Oct 2026 13:49:28 -0400"
+      ],
+      "sampleTitles": [
+        "Trump says U.S. to get diesel from Russia, relaxing pressure on Moscow to ease prices before midterms",
+        "Trump's Affordable Suit",
+        "U.S. working to reverse an Egyptian man's third-country deportation to Africa"
+      ],
+      "newestItemAt": "2026-10-09T17:24:13-04:00",
+      "ageHours": 8.0,
+      "fresh": true,
+      "error": "",
+      "durationMs": 219
+    },
+    {
+      "id": "pbs_politics",
+      "name": "PBS Politics",
+      "url": "https://www.pbs.org/newshour/feeds/rss/politics",
+      "category": "Politics",
+      "httpStatus": 200,
+      "finalUrl": "https://www.pbs.org/newshour/feeds/rss/politics",
+      "contentType": "application/rss+xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 18:50:33 -0400",
+        "Fri, 09 Oct 2026 18:45:13 -0400",
+        "Fri, 09 Oct 2026 18:40:03 -0400"
+      ],
+      "sampleTitles": [
+        "ICE shooting of man in New York with child in his car sparks outrage",
+        "News Wrap: Trump announces diesel deal with Russia",
+        "Navi Pillay wins Nobel Peace Prize after long career of investigating war crimes"
+      ],
+      "newestItemAt": "2026-10-09T18:50:33-04:00",
+      "ageHours": 6.5,
+      "fresh": true,
+      "error": "",
+      "durationMs": 218
+    },
+    {
+      "id": "guardian_politics",
+      "name": "The Guardian Politics",
+      "url": "https://www.theguardian.com/politics/rss",
+      "category": "Politics",
+      "httpStatus": 200,
+      "finalUrl": "https://www.theguardian.com/politics/rss",
+      "contentType": "text/xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 21,
+      "usableCount": 21,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 05:00:47 GMT",
+        "Fri, 09 Oct 2026 20:58:00 GMT",
+        "Fri, 09 Oct 2026 17:52:17 GMT"
+      ],
+      "sampleTitles": [
+        "Create new pre-apprenticeship scheme to close youth unemployment gap, says Milburn",
+        "Northern Ireland secretary Chris Bryant bans Drumcree parade",
+        "Parties prepare for byelection in Farage seat amid speculation over \u00a35m gift inquiry"
+      ],
+      "newestItemAt": "2026-10-10T05:00:49+00:00",
+      "ageHours": 0.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 250
+    },
+    {
+      "id": "nyt_politics",
+      "name": "New York Times Politics",
+      "url": "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml",
+      "category": "Politics",
+      "httpStatus": 200,
+      "finalUrl": "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml",
+      "contentType": "application/xml",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 23:01:48 +0000",
+        "Sat, 10 Oct 2026 04:06:53 +0000",
+        "Fri, 09 Oct 2026 21:26:59 +0000"
+      ],
+      "sampleTitles": [
+        "In Deep-Red Kansas, a Surprisingly Competitive Senate Race Takes Shape",
+        "For Trump, a Firing Squad on Livestream Becomes the Latest Spectacle",
+        "Fort Hood Shooter\u2019s Execution Could Face Challenge in Federal Courts"
+      ],
+      "newestItemAt": "2026-10-10T04:06:53+00:00",
+      "ageHours": 1.3,
+      "fresh": true,
+      "error": "",
+      "durationMs": 78
+    },
+    {
+      "id": "fortune_business",
+      "name": "Fortune",
+      "url": "https://fortune.com/feed/",
+      "category": "Business",
+      "httpStatus": 200,
+      "finalUrl": "https://fortune.com/feed/fortune-feeds/?id=3230629",
+      "contentType": "application/xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 10,
+      "usableCount": 10,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 18:46:28 +0000",
+        "Fri, 09 Oct 2026 21:30:13 +0000",
+        "Fri, 09 Oct 2026 21:21:15 +0000"
+      ],
+      "sampleTitles": [
+        "\u2018Are we rich?\u2019 The question billionaire and millionaire parents dread, and what happens when they dodge it",
+        "\u2018Piece by piece\u2019: Trump administration vows to dismantle the International Criminal Court with sweeping new sanctions",
+        "\u2018I don\u2019t know that that\u2019s actually going to happen\u2019: Vance doubts plan to livestream of execution of Fort Hood shooter after Pentagon\u2019s announcement"
+      ],
+      "newestItemAt": "2026-10-09T21:30:13+00:00",
+      "ageHours": 7.9,
+      "fresh": true,
+      "error": "",
+      "durationMs": 125
+    },
+    {
+      "id": "ft_news",
+      "name": "Financial Times",
+      "url": "https://www.ft.com/news-feed?format=rss",
+      "category": "Finance",
+      "httpStatus": 200,
+      "finalUrl": "https://www.ft.com/news-feed?format=rss",
+      "contentType": "text/xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 25,
+      "usableCount": 25,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 04:14:40 GMT",
+        "Sat, 10 Oct 2026 04:02:04 GMT",
+        "Sat, 10 Oct 2026 04:00:44 GMT"
+      ],
+      "sampleTitles": [
+        "How India is reshaping mental healthcare | FT Standpoint",
+        "Pink Snow 2026: a winter sports special",
+        "Nigeria offers fuel discount in \u2018pre-election sweetener\u2019"
+      ],
+      "newestItemAt": "2026-10-10T04:14:40+00:00",
+      "ageHours": 1.1,
+      "fresh": true,
+      "error": "",
+      "durationMs": 453
+    },
+    {
+      "id": "wsj_markets",
+      "name": "Wall Street Journal Markets",
+      "url": "https://feeds.content.dowjones.io/public/rss/RSSMarketsMain",
+      "category": "Finance",
+      "httpStatus": 200,
+      "finalUrl": "https://feeds.content.dowjones.io/public/rss/RSSMarketsMain",
+      "contentType": "application/xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 61,
+      "usableCount": 61,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 08:23:12 GMT",
+        "Sat, 10 Oct 2026 02:00:00 GMT",
+        "Fri, 09 Oct 2026 21:47:00 GMT"
+      ],
+      "sampleTitles": [
+        "Stock Market News, Oct. 9, 2026: Stocks Rise as Tech Shakes Off Thursday Selloff",
+        "At Robinhood\u2019s Mecca for Risk-Loving Traders, Everyone Has a Tale of Getting Rich",
+        "Kalshi Examines Bets on Trump\u2019s Pick for New White House Press Secretary"
+      ],
+      "newestItemAt": "2026-10-10T02:00:00+00:00",
+      "ageHours": 3.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 62
+    },
+    {
+      "id": "marketwatch_top",
+      "name": "MarketWatch",
+      "url": "https://feeds.marketwatch.com/marketwatch/topstories",
+      "category": "Finance",
+      "httpStatus": 200,
+      "finalUrl": "https://feeds.content.dowjones.io/public/rss/mw_topstories",
+      "contentType": "application/xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 10,
+      "usableCount": 10,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 03:15:00 GMT",
+        "Sat, 10 Oct 2026 00:15:00 GMT",
+        "Fri, 09 Oct 2026 23:15:00 GMT"
+      ],
+      "sampleTitles": [
+        "\u2018I feel like a loser\u2019: My stock portfolio is swinging wildly. Should I be worried?",
+        "\u2018I have no children\u2019: My aunt gave me $50,000 for a down payment. Now she wants me to leave my home to her two children.",
+        "My brother-in-law convinced his parents to sign over their home and life savings to buy a $3 million compound. Do I intervene?"
+      ],
+      "newestItemAt": "2026-10-10T03:15:00+00:00",
+      "ageHours": 2.1,
+      "fresh": true,
+      "error": "",
+      "durationMs": 187
+    },
+    {
+      "id": "bloomberg_markets",
+      "name": "Bloomberg Markets",
+      "url": "https://feeds.bloomberg.com/markets/news.rss",
+      "category": "Finance",
+      "httpStatus": 200,
+      "finalUrl": "https://www.bloomberg.com/feeds/markets/news.rss",
+      "contentType": "text/xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 03:14:34 GMT",
+        "Sat, 10 Oct 2026 03:43:38 GMT",
+        "Sat, 10 Oct 2026 03:35:41 GMT"
+      ],
+      "sampleTitles": [
+        "India Central Bank Announces Measures to Support Plunging Rupee",
+        "China Targets AI-Linked Jobs With New Employment Initiative",
+        "Taiwan\u2019s Lai Urges Democracies to Unite After Trump-Xi Summit"
+      ],
+      "newestItemAt": "2026-10-10T03:43:38+00:00",
+      "ageHours": 1.6,
+      "fresh": true,
+      "error": "",
+      "durationMs": 625
+    },
+    {
+      "id": "wired_tech",
+      "name": "WIRED",
+      "url": "https://www.wired.com/feed/rss",
+      "category": "Technology",
+      "httpStatus": 200,
+      "finalUrl": "https://www.wired.com/feed/rss",
+      "contentType": "application/xml",
+      "ok": true,
+      "itemCount": 50,
+      "usableCount": 50,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 05:00:00 +0000",
+        "Sat, 10 Oct 2026 05:00:00 +0000",
+        "Sat, 10 Oct 2026 05:00:00 +0000"
+      ],
+      "sampleTitles": [
+        "LG Promo Codes and Coupons for October 2026",
+        "30% Off Canon Promo Codes | October 2026",
+        "Disney Plus Discount Codes: 52% Off October 2026"
+      ],
+      "newestItemAt": "2026-10-10T05:00:00+00:00",
+      "ageHours": 0.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 94
+    },
+    {
+      "id": "wired_science",
+      "name": "WIRED Science",
+      "url": "https://www.wired.com/feed/category/science/latest/rss",
+      "category": "Science",
+      "httpStatus": 200,
+      "finalUrl": "https://www.wired.com/feed/category/science/latest/rss",
+      "contentType": "application/xml",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 18:30:00 +0000",
+        "Fri, 09 Oct 2026 09:30:00 +0000",
+        "Thu, 08 Oct 2026 10:30:00 +0000"
+      ],
+      "sampleTitles": [
+        "NASA Just Made Nearly 1 TB of Artemis II Data Available to the Public",
+        "A New Mexico Community Was a Place to Build a Life. Then a Hypersonic Missile Factory Showed Up",
+        "Life Is Asymmetric. The Scientists Who Figured Out Why Won the 2026 Nobel Prize in Chemistry"
+      ],
+      "newestItemAt": "2026-10-09T18:30:00+00:00",
+      "ageHours": 10.9,
+      "fresh": true,
+      "error": "",
+      "durationMs": 78
+    },
+    {
+      "id": "techcrunch",
+      "name": "TechCrunch",
+      "url": "https://techcrunch.com/feed/",
+      "category": "Technology",
+      "httpStatus": 200,
+      "finalUrl": "https://techcrunch.com/feed/",
+      "contentType": "application/rss+xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 03:10:06 +0000",
+        "Sat, 10 Oct 2026 00:18:32 +0000",
+        "Fri, 09 Oct 2026 22:08:24 +0000"
+      ],
+      "sampleTitles": [
+        "Elon Musk intensifies attack on Ambani over Starlink India launch delay",
+        "Anthropic can\u2019t reliably control its AI agents. It\u2019s cutting off its internal evals from the live internet instead",
+        "Long live the mechanical keyboard"
+      ],
+      "newestItemAt": "2026-10-10T03:10:06+00:00",
+      "ageHours": 2.2,
+      "fresh": true,
+      "error": "",
+      "durationMs": 156
+    },
+    {
+      "id": "ieee_spectrum",
+      "name": "IEEE Spectrum",
+      "url": "https://spectrum.ieee.org/feeds/feed.rss",
+      "category": "Technology",
+      "httpStatus": 200,
+      "finalUrl": "https://spectrum.ieee.org/feeds/feed.rss",
+      "contentType": "application/rss+xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 30,
+      "usableCount": 30,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 18:00:02 +0000",
+        "Fri, 09 Oct 2026 12:00:02 +0000",
+        "Wed, 07 Oct 2026 18:00:02 +0000"
+      ],
+      "sampleTitles": [
+        "Master AI Chip Principles With New IEEE Design Program",
+        "We Need to Embed Ethics Into Our Engineering Courses",
+        "IEEE Report Predicts Tech That Will Transform Lives"
+      ],
+      "newestItemAt": "2026-10-09T18:00:02+00:00",
+      "ageHours": 11.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 125
+    },
+    {
+      "id": "science_news",
+      "name": "Science News",
+      "url": "https://www.sciencenews.org/feed",
+      "category": "Science",
+      "httpStatus": 200,
+      "finalUrl": "https://www.sciencenews.org/feed",
+      "contentType": "application/rss+xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 15:00:00 +0000",
+        "Fri, 09 Oct 2026 13:00:00 +0000",
+        "Thu, 08 Oct 2026 18:05:31 +0000"
+      ],
+      "sampleTitles": [
+        "How the Grand Canyon could have lost 1 billion years of geologic history",
+        "Here\u2019s a look at the Nobel Prizes for science",
+        "Kilauea\u2019s display is revealing why volcanoes spew like a fountain show"
+      ],
+      "newestItemAt": "2026-10-09T15:00:00+00:00",
+      "ageHours": 14.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 204
+    },
+    {
+      "id": "scientific_american",
+      "name": "Scientific American",
+      "url": "https://www.scientificamerican.com/platform/syndication/rss/",
+      "category": "Science",
+      "httpStatus": 200,
+      "finalUrl": "https://www.scientificamerican.com/platform/syndication/rss/",
+      "contentType": "application/rss+xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 50,
+      "usableCount": 50,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 20:45:00 +0000",
+        "Fri, 09 Oct 2026 20:05:00 +0000",
+        "Fri, 09 Oct 2026 15:00:00 +0000"
+      ],
+      "sampleTitles": [
+        "Major earthquake strikes Panama\u2014damage and injuries are expected",
+        "How Hurricane Isaias got so dangerously strong so fast",
+        "The Social Reckoning is a \u2018surreal\u2019 portrait of social media\u2019s harms, scientist says"
+      ],
+      "newestItemAt": "2026-10-09T20:45:00+00:00",
+      "ageHours": 8.6,
+      "fresh": true,
+      "error": "",
+      "durationMs": 172
+    },
+    {
+      "id": "phys_org",
+      "name": "Phys.org",
+      "url": "https://phys.org/rss-feed/",
+      "category": "Science",
+      "httpStatus": 200,
+      "finalUrl": "https://phys.org/rss-feed/",
+      "contentType": "text/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 30,
+      "usableCount": 30,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 21:20:01 EDT",
+        "Fri, 09 Oct 2026 20:20:05 EDT",
+        "Fri, 09 Oct 2026 19:00:01 EDT"
+      ],
+      "sampleTitles": [
+        "Mountaineer: 'Tenzing biopic made me wonder what he would think if he could return to the mountain today'",
+        "Geologists uncover evidence of a missing Late Cretaceous magmatic arc in northwestern Iran",
+        "Food testing reveals how diet can add to exposure to 'forever chemicals'"
+      ],
+      "newestItemAt": "2026-10-09T21:20:01-04:00",
+      "ageHours": 4.0,
+      "fresh": true,
+      "error": "",
+      "durationMs": 234
+    },
+    {
+      "id": "nature_news",
+      "name": "Nature (News & Research)",
+      "url": "https://www.nature.com/nature.rss",
+      "category": "Science",
+      "httpStatus": 200,
+      "finalUrl": "https://www.nature.com/nature.rss",
+      "contentType": "application/rss+xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 75,
+      "usableCount": 75,
+      "sampleDates": [
+        "2026-10-09",
+        "2026-10-09",
+        "2026-10-09"
+      ],
+      "sampleTitles": [
+        "Breaking down nerve-cell scaffold relieves chronic pain in mice",
+        "Briefing Chat: Top researchers are being misled by sham academic societies",
+        "Chimp and gorilla brains resist weight loss with age \u2014 unlike human brains"
+      ],
+      "newestItemAt": "2026-10-09T00:00:00+00:00",
+      "ageHours": 29.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 125
+    },
+    {
+      "id": "guardian_lifestyle",
+      "name": "The Guardian Life & Style",
+      "url": "https://www.theguardian.com/lifeandstyle/rss",
+      "category": "Lifestyle",
+      "httpStatus": 200,
+      "finalUrl": "https://www.theguardian.com/uk/lifeandstyle/rss",
+      "contentType": "text/xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 47,
+      "usableCount": 47,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 04:00:38 GMT",
+        "Fri, 09 Oct 2026 16:00:32 GMT",
+        "Fri, 02 Oct 2026 13:46:36 GMT"
+      ],
+      "sampleTitles": [
+        "Experience: I became the world\u2019s oldest crowd surfer at 99",
+        "What happens to your pets when you die?",
+        "\u2018Ideas need space to breathe\u2019: how Liv Little protects her creativity"
+      ],
+      "newestItemAt": "2026-10-10T05:00:49+00:00",
+      "ageHours": 0.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 453
+    },
+    {
+      "id": "architectural_digest",
+      "name": "Architectural Digest",
+      "url": "https://www.architecturaldigest.com/feed/rss",
+      "category": "Lifestyle",
+      "httpStatus": 200,
+      "finalUrl": "https://www.architecturaldigest.com/feed/rss",
+      "contentType": "application/xml",
+      "ok": true,
+      "itemCount": 30,
+      "usableCount": 30,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 22:30:11 +0000",
+        "Fri, 09 Oct 2026 21:53:40 +0000",
+        "Fri, 09 Oct 2026 20:12:35 +0000"
+      ],
+      "sampleTitles": [
+        "9 Stylish Height-Adjustable Desks We Stand Behind (2026)",
+        "12 Best Article Furniture Buys, Tested and Reviewed (2026)",
+        "In This Elegant Paris Pied-\u00e0-Terre the Interiors Are Inspired by a 1960s Novel and Model Betty Catroux"
+      ],
+      "newestItemAt": "2026-10-09T22:30:11+00:00",
+      "ageHours": 6.9,
+      "fresh": true,
+      "error": "",
+      "durationMs": 78
+    },
+    {
+      "id": "vogue",
+      "name": "Vogue",
+      "url": "https://www.vogue.com/feed/rss",
+      "category": "Lifestyle",
+      "httpStatus": 200,
+      "finalUrl": "https://www.vogue.com/feed/rss",
+      "contentType": "application/xml",
+      "ok": true,
+      "itemCount": 30,
+      "usableCount": 30,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 01:28:08 +0000",
+        "Sat, 10 Oct 2026 00:43:32 +0000",
+        "Fri, 09 Oct 2026 22:08:14 +0000"
+      ],
+      "sampleTitles": [
+        "Carnegie Hall\u2019s Opening Night Gala Spotlighted the Power of Music",
+        "At The Albies, Amal and George Clooney Make Sure the Real-Life Heroes Take Center Stage",
+        "25 Thoughts I Had About Season 13, Episode 7 of \u2018American Horror Story\u2019"
+      ],
+      "newestItemAt": "2026-10-10T05:21:59+00:00",
+      "ageHours": 0.0,
+      "fresh": true,
+      "error": "",
+      "durationMs": 1407
+    },
+    {
+      "id": "variety",
+      "name": "Variety",
+      "url": "https://variety.com/feed/",
+      "category": "Entertainment",
+      "httpStatus": 200,
+      "finalUrl": "https://variety.com/feed/",
+      "contentType": "application/rss+xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 10,
+      "usableCount": 10,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 03:41:52 +0000",
+        "Sat, 10 Oct 2026 03:18:34 +0000",
+        "Sat, 10 Oct 2026 02:44:33 +0000"
+      ],
+      "sampleTitles": [
+        "Vietnamese Horror \u2018Arithmadtic\u2019 Leads Bee Entertainment\u2019s Busan Market Slate, With New Film From \u2018The Corpse\u2019 Director",
+        "Cambodian Remake of Korean Mother-Daughter Drama \u2018Wedding Dress\u2019 Leads Abnormal Studios\u2019 Busan Market Slate (EXCLUSIVE)",
+        "\u2018Exorcism of God\u2019 Director Alejandro Hidalgo to Helm Malaysian Hungry Ghost Festival Horror \u2018The Hungry One\u2019 (EXCLUSIVE)"
+      ],
+      "newestItemAt": "2026-10-10T03:41:52+00:00",
+      "ageHours": 1.7,
+      "fresh": true,
+      "error": "",
+      "durationMs": 94
+    },
+    {
+      "id": "hollywood_reporter",
+      "name": "The Hollywood Reporter",
+      "url": "https://www.hollywoodreporter.com/feed/",
+      "category": "Entertainment",
+      "httpStatus": 200,
+      "finalUrl": "https://www.hollywoodreporter.com/feed/",
+      "contentType": "application/rss+xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 10,
+      "usableCount": 10,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 01:14:29 +0000",
+        "Sat, 10 Oct 2026 01:00:00 +0000",
+        "Sat, 10 Oct 2026 00:09:26 +0000"
+      ],
+      "sampleTitles": [
+        "BlumFest Haunts New York Comic Con 2026: All the Highlights From Blumhouse Atomic Monster",
+        "\u201814th\u2019 Review: Ava DuVernay Delivers Another Essential and Compelling Constitutional Deep Dive for Netflix",
+        "Roseanne Barr\u2019s Self-Produced TV Series Now Courting Distributors, Co-Creator Says"
+      ],
+      "newestItemAt": "2026-10-10T01:14:29+00:00",
+      "ageHours": 4.1,
+      "fresh": true,
+      "error": "",
+      "durationMs": 94
+    },
+    {
+      "id": "deadline",
+      "name": "Deadline",
+      "url": "https://deadline.com/feed/rss",
+      "category": "Entertainment",
+      "httpStatus": 200,
+      "finalUrl": "https://deadline.com/feed/",
+      "contentType": "application/rss+xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 12,
+      "usableCount": 12,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 01:05:22 +0000",
+        "Sat, 10 Oct 2026 01:02:52 +0000",
+        "Sat, 10 Oct 2026 01:00:00 +0000"
+      ],
+      "sampleTitles": [
+        "Craig Zobel & Blumhouse Teaming On \u2018Something Is Killing The Children\u2019",
+        "Danny Trejo Insists He\u2019s \u201cPro-Immigrant\u201d & \u201cProud Mexican\u201d Amid Backlash To Daily Wire\u2019s ICE Film: \u201cMake No Mistake\u201d",
+        "\u201814th\u2019 Review: Ava DuVernay\u2019s Impassioned Defense Of Constitution Takes Aim At Trump & Attempted Rescission Of Rights"
+      ],
+      "newestItemAt": "2026-10-10T01:05:22+00:00",
+      "ageHours": 4.3,
+      "fresh": true,
+      "error": "",
+      "durationMs": 1281
+    },
+    {
+      "id": "npr_culture",
+      "name": "NPR Culture",
+      "url": "https://feeds.npr.org/1008/rss.xml",
+      "category": "Entertainment",
+      "httpStatus": 200,
+      "finalUrl": "https://feeds.npr.org/1008/rss.xml",
+      "contentType": "text/xml;charset=UTF-8",
+      "ok": true,
+      "itemCount": 10,
+      "usableCount": 10,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 15:21:06 -0400",
+        "Fri, 09 Oct 2026 12:26:23 -0400",
+        "Fri, 09 Oct 2026 07:00:00 -0400"
+      ],
+      "sampleTitles": [
+        "Latest in the 'Divergent' universe finds a different  Tris",
+        "Five children are taken from their parents in 'Fjord,' which won top prize at Cannes",
+        "'Misty Green' squanders its potential"
+      ],
+      "newestItemAt": "2026-10-09T15:21:06-04:00",
+      "ageHours": 10.0,
+      "fresh": true,
+      "error": "",
+      "durationMs": 62
+    },
+    {
+      "id": "guardian_culture",
+      "name": "The Guardian Culture",
+      "url": "https://www.theguardian.com/culture/rss",
+      "category": "Entertainment",
+      "httpStatus": 200,
+      "finalUrl": "https://www.theguardian.com/uk/culture/rss",
+      "contentType": "text/xml; charset=UTF-8",
+      "ok": true,
+      "itemCount": 65,
+      "usableCount": 65,
+      "sampleDates": [
+        "Fri, 09 Oct 2026 04:00:38 GMT",
+        "Fri, 09 Oct 2026 07:00:41 GMT",
+        "Fri, 09 Oct 2026 13:53:35 GMT"
+      ],
+      "sampleTitles": [
+        "\u2018Old-timey fascism was kept secret. Now you don\u2019t have to hide it\u2019: Martin McDonagh, John Malkovich and Sam Rockwell on Wild Horse Nine",
+        "\u2018It gave me a superpower \u2013 question everything\u2019: \u200bas punk turns 50, bands from China to Greenland explain how it fires up their lives",
+        "End of the World and Hard-Boiled Wonderland review \u2013 Murakami\u2019s marvel brilliantly brought to life"
+      ],
+      "newestItemAt": "2026-10-09T14:00:32+00:00",
+      "ageHours": 15.4,
+      "fresh": true,
+      "error": "",
+      "durationMs": 297
+    },
+    {
+      "id": "cna_world",
+      "name": "CNA World",
+      "url": "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6311",
+      "category": "News",
+      "httpStatus": 200,
+      "finalUrl": "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6311",
+      "contentType": "application/rss+xml; charset=utf-8",
+      "ok": true,
+      "itemCount": 20,
+      "usableCount": 20,
+      "sampleDates": [
+        "Sat, 10 Oct 2026 05:53:00 +0800",
+        "Sat, 10 Oct 2026 04:53:00 +0800",
+        "Sat, 10 Oct 2026 04:18:40 +0800"
+      ],
+      "sampleTitles": [
+        "France students plan more protests, UN 'concerned' over violence",
+        "Trump says Putin agrees to major release of diesel to US, global markets",
+        "US announces sanctions on ICC, hours after Nobel award to former judge"
+      ],
+      "newestItemAt": "2026-10-10T05:53:00+08:00",
+      "ageHours": 7.5,
+      "fresh": true,
+      "error": "",
+      "durationMs": 125
+    }
+  ]
+}

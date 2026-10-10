@@ -11,431 +11,67 @@
  * SOLID: Single Responsibility Principle - feed definitions and topic mappings only.
  */
 
-export const DEFAULT_FEEDS = [
-  // --- TOP STORIES & BREAKING NEWS ---
-  {
-    id: 'cbc_top',
-    name: 'CBC News',
-    domain: 'cbc.ca',
-    url: 'https://www.cbc.ca/cmlink/rss-topstories',
-    topics: ['TOP', 'LATEST'],
-    maxArticles: 10,
-    enabled: true,
-  },
-  {
-    id: 'global_top',
-    name: 'Global News',
-    domain: 'globalnews.ca',
-    url: 'https://globalnews.ca/feed/',
-    topics: ['TOP', 'LATEST'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'nyt_top',
-    name: 'New York Times',
-    domain: 'nytimes.com',
-    url: 'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml',
-    topics: ['TOP', 'LATEST'],
-    maxArticles: 10,
-    enabled: true,
-  },
-  {
-    id: 'bbc_top',
-    name: 'BBC News',
-    domain: 'bbc.co.uk',
-    url: 'https://feeds.bbci.co.uk/news/rss.xml',
-    topics: ['TOP', 'LATEST'],
-    maxArticles: 10,
-    enabled: true,
-  },
-  {
-    id: 'cnbc_top',
-    name: 'CNBC',
-    domain: 'cnbc.com',
-    url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html',
-    topics: ['TOP', 'LATEST'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'fox_top',
-    name: 'Fox News',
-    domain: 'foxnews.com',
-    url: 'http://feeds.foxnews.com/foxnews/latest',
-    topics: ['TOP', 'LATEST'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'politico_playbook',
-    name: 'Politico',
-    domain: 'politico.com',
-    url: 'https://rss.politico.com/playbook.xml',
-    topics: ['TOP'],
-    maxArticles: 7,
-    enabled: true,
-  },
-  {
-    id: 'abc_top',
-    name: 'ABC News',
-    domain: 'abcnews.go.com',
-    url: 'https://abcnews.go.com/abcnews/topstories',
-    topics: ['TOP', 'LATEST'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'aljazeera_top',
-    name: 'Al Jazeera',
-    domain: 'aljazeera.com',
-    url: 'https://www.aljazeera.com/xml/rss/all.xml',
-    topics: ['TOP', 'LATEST', 'WORLD'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  // --- ASIA & INTERNATIONAL PERSPECTIVES ---
-  {
-    id: 'japan_times_top',
-    name: 'The Japan Times',
-    domain: 'japantimes.co.jp',
-    url: 'https://www.japantimes.co.jp/feed/',
-    topics: ['TOP', 'LATEST'],
-    maxArticles: 7,
-    enabled: true,
-  },
-  {
-    id: 'scmp_asia',
-    name: 'South China Morning Post (Asia)',
-    domain: 'scmp.com',
-    url: 'https://www.scmp.com/rss/3/feed',
-    topics: ['TOP', 'LATEST', 'WORLD'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'cna_top',
-    name: 'CNA',
-    domain: 'channelnewsasia.com',
-    url: 'https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml',
-    topics: ['TOP', 'LATEST'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'dw_top',
-    name: 'Deutsche Welle',
-    domain: 'dw.com',
-    url: 'https://rss.dw.com/xml/rss-en-all',
-    topics: ['TOP', 'LATEST', 'WORLD'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'france24_top',
-    name: 'France 24',
-    domain: 'france24.com',
-    url: 'https://www.france24.com/en/rss',
-    topics: ['TOP', 'LATEST', 'WORLD'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'lemonde_world',
-    name: 'Le Monde (International)',
-    domain: 'lemonde.fr',
-    url: 'https://www.lemonde.fr/en/international/rss_full.xml',
-    topics: ['WORLD'],
-    maxArticles: 7,
-    enabled: true,
-  },
-  {
-    id: 'lemonde_europe',
-    name: 'Le Monde (Europe)',
-    domain: 'lemonde.fr',
-    url: 'https://www.lemonde.fr/en/europe/rss_full.xml',
-    topics: ['WORLD'],
-    maxArticles: 7,
-    enabled: true,
-  },
+import { FEED_CATALOG } from './feedCatalog.js';
 
-  // --- CANADA ---
-  {
-    id: 'cbc_canada',
-    name: 'CBC Canada',
-    domain: 'cbc.ca',
-    url: 'https://www.cbc.ca/cmlink/rss-canada',
-    topics: ['CANADA'],
-    maxArticles: 10,
-    enabled: true,
-  },
-  {
-    id: 'global_canada',
-    name: 'Global News Canada',
-    domain: 'globalnews.ca',
-    url: 'https://globalnews.ca/feed/',
-    topics: ['CANADA'],
-    maxArticles: 8,
-    enabled: true,
-  },
+export const DEFAULT_FEEDS = FEED_CATALOG;
 
-  // --- LOCAL: VANCOUVER & BRITISH COLUMBIA ---
-  {
-    id: 'cbc_bc',
-    name: 'CBC British Columbia',
-    domain: 'cbc.ca',
-    url: 'https://www.cbc.ca/cmlink/rss-canada-britishcolumbia',
-    topics: ['VANCOUVER', 'BC'],
-    maxArticles: 10,
-    enabled: true,
-  },
-  {
-    id: 'global_bc',
-    name: 'Global News BC',
-    domain: 'globalnews.ca',
-    url: 'https://globalnews.ca/bc/feed/',
-    topics: ['VANCOUVER', 'BC'],
-    maxArticles: 9,
-    enabled: true,
-  },
+export const GOOGLE_NEWS_SOURCE = {
+  id: 'google_news', name: 'Google News', domain: 'news.google.com', url: 'https://news.google.com/rss',
+  category: 'News', kind: 'aggregator', topics: [], isPrimary: true, isCustom: false,
+};
+const SOURCE_PREFERENCES_KEY = 'openwire_disabled_sources_v1';
+let sessionDisabledSources = null;
+const sessionEnabledSources = new Set();
 
-  // --- WORLD ---
-  {
-    id: 'bbc_world',
-    name: 'BBC World',
-    domain: 'bbc.co.uk',
-    url: 'http://feeds.bbci.co.uk/news/world/rss.xml',
-    topics: ['WORLD'],
-    maxArticles: 10,
-    enabled: true,
-  },
-  {
-    id: 'guardian_world',
-    name: 'The Guardian World',
-    domain: 'theguardian.com',
-    url: 'https://www.theguardian.com/world/rss',
-    topics: ['WORLD'],
-    maxArticles: 9,
-    enabled: true,
-  },
-  {
-    id: 'nyt_world',
-    name: 'New York Times World',
-    domain: 'nytimes.com',
-    url: 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
-    topics: ['WORLD'],
-    maxArticles: 9,
-    enabled: true,
-  },
-  {
-    id: 'cnn_world',
-    name: 'CNN World',
-    domain: 'cnn.com',
-    url: 'http://rss.cnn.com/rss/edition_world.rss',
-    topics: ['WORLD'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'cnbc_world',
-    name: 'CNBC International',
-    domain: 'cnbc.com',
-    url: 'https://www.cnbc.com/id/100727362/device/rss/rss.html',
-    topics: ['WORLD'],
-    maxArticles: 7,
-    enabled: true,
-  },
-  {
-    id: 'cbc_world',
-    name: 'CBC World',
-    domain: 'cbc.ca',
-    url: 'https://www.cbc.ca/cmlink/rss-world',
-    topics: ['WORLD'],
-    maxArticles: 7,
-    enabled: true,
-  },
-  {
-    id: 'abc_world',
-    name: 'ABC World News',
-    domain: 'abcnews.go.com',
-    url: 'https://abcnews.go.com/abcnews/internationalheadlines',
-    topics: ['WORLD'],
-    maxArticles: 7,
-    enabled: true,
-  },
+function sourceKey(source) {
+  const value = typeof source === 'string' ? source : source?.isPrimary ? 'google_news' : source?.url;
+  if (value === 'google_news') return value;
+  try {
+    const parsed = new URL(value);
+    return parsed.hostname === 'news.google.com' ? 'google_news' : parsed.href;
+  } catch { return ''; }
+}
 
-  // --- BUSINESS & MARKETS ---
-  {
-    id: 'investing_all',
-    name: 'Investing.com',
-    domain: 'investing.com',
-    url: 'https://www.investing.com/rss/news.rss',
-    topics: ['BUSINESS'],
-    maxArticles: 9,
-    enabled: true,
-  },
-  {
-    id: 'bloomberg_quicktake',
-    name: 'Bloomberg Quicktake',
-    domain: 'youtube.com',
-    url: 'https://www.youtube.com/feeds/videos.xml?user=Bloomberg',
-    topics: ['BUSINESS'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'cnbc_business',
-    name: 'CNBC',
-    domain: 'cnbc.com',
-    url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html',
-    topics: ['BUSINESS'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'bbc_business',
-    name: 'BBC Business',
-    domain: 'bbc.co.uk',
-    url: 'https://feeds.bbci.co.uk/news/business/rss.xml',
-    topics: ['BUSINESS'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'cbc_business',
-    name: 'CBC Business',
-    domain: 'cbc.ca',
-    url: 'https://www.cbc.ca/cmlink/rss-business',
-    topics: ['BUSINESS'],
-    maxArticles: 8,
-    enabled: true,
-  },
+export function getDisabledSourceKeys() {
+  if (sessionDisabledSources) return [...sessionDisabledSources];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SOURCE_PREFERENCES_KEY) || '[]');
+    return Array.isArray(parsed) ? [...new Set(parsed.filter(value => typeof value === 'string').map(sourceKey).filter(Boolean))] : [];
+  } catch { return []; }
+}
 
-  // --- TECHNOLOGY ---
-  {
-    id: 'ars_technica',
-    name: 'Ars Technica',
-    domain: 'arstechnica.com',
-    url: 'http://feeds.arstechnica.com/arstechnica/index',
-    topics: ['TECHNOLOGY'],
-    maxArticles: 9,
-    enabled: true,
-  },
-  {
-    id: 'the_verge',
-    name: 'The Verge',
-    domain: 'youtube.com',
-    url: 'https://www.youtube.com/feeds/videos.xml?user=TheVerge',
-    topics: ['TECHNOLOGY'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'gizmodo',
-    name: 'Gizmodo',
-    domain: 'gizmodo.com',
-    url: 'https://gizmodo.com/rss',
-    topics: ['TECHNOLOGY'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'hacker_news',
-    name: 'Hacker News',
-    domain: 'ycombinator.com',
-    url: 'https://news.ycombinator.com/rss',
-    topics: ['TECHNOLOGY'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'slashdot',
-    name: 'Slashdot',
-    domain: 'slashdot.org',
-    url: 'http://rss.slashdot.org/Slashdot/slashdotMain',
-    topics: ['TECHNOLOGY'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'bbc_tech',
-    name: 'BBC Technology',
-    domain: 'bbc.co.uk',
-    url: 'https://feeds.bbci.co.uk/news/technology/rss.xml',
-    topics: ['TECHNOLOGY'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'cbc_tech',
-    name: 'CBC Tech',
-    domain: 'cbc.ca',
-    url: 'https://www.cbc.ca/cmlink/rss-technology',
-    topics: ['TECHNOLOGY'],
-    maxArticles: 7,
-    enabled: true,
-  },
+export function isSourceEnabled(source) {
+  const key = sourceKey(source);
+  return (source?.enabled !== false || sessionEnabledSources.has(key)) && !getDisabledSourceKeys().includes(key);
+}
 
-  // --- SCIENCE ---
-  {
-    id: 'bbc_science',
-    name: 'BBC Science',
-    domain: 'bbc.co.uk',
-    url: 'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml',
-    topics: ['SCIENCE'],
-    maxArticles: 9,
-    enabled: true,
-  },
-  {
-    id: 'ars_science',
-    name: 'Ars Technica Science',
-    domain: 'arstechnica.com',
-    url: 'http://feeds.arstechnica.com/arstechnica/index',
-    topics: ['SCIENCE'],
-    maxArticles: 8,
-    enabled: true,
-  },
+// URL keys apply to every use of a feed, even when it has several topic IDs.
+export function setSourcesEnabled(sources, enabled) {
+  const disabled = new Set(getDisabledSourceKeys());
+  const keys = new Set(sources.map(sourceKey).filter(Boolean));
+  const custom = loadCustomFeeds();
+  const changedCustom = custom.some(feed => keys.has(sourceKey(feed)) && feed.enabled !== enabled);
+  let customSaved = true;
+  if (changedCustom) customSaved = saveCustomFeeds(custom.map(feed => keys.has(sourceKey(feed)) ? { ...feed, enabled } : feed));
+  for (const source of sources) {
+    const key = sourceKey(source);
+    if (!key) continue;
+    if (enabled) { disabled.delete(key); sessionEnabledSources.add(key); }
+    else { disabled.add(key); sessionEnabledSources.delete(key); }
+  }
+  try {
+    localStorage.setItem(SOURCE_PREFERENCES_KEY, JSON.stringify([...disabled]));
+    sessionDisabledSources = null;
+    return customSaved;
+  } catch {
+    sessionDisabledSources = disabled;
+    return false;
+  }
+}
 
-  // --- ENTERTAINMENT ---
-  {
-    id: 'bbc_entertainment',
-    name: 'BBC Entertainment',
-    domain: 'bbc.co.uk',
-    url: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml',
-    topics: ['ENTERTAINMENT'],
-    maxArticles: 8,
-    enabled: true,
-  },
-  {
-    id: 'abc_entertainment',
-    name: 'ABC Entertainment',
-    domain: 'abcnews.go.com',
-    url: 'https://abcnews.go.com/abcnews/entertainmentheadlines',
-    topics: ['ENTERTAINMENT'],
-    maxArticles: 8,
-    enabled: true,
-  },
-
-  // --- SPORTS ---
-  {
-    id: 'cbc_sports',
-    name: 'CBC Sports',
-    domain: 'cbc.ca',
-    url: 'https://www.cbc.ca/cmlink/rss-sports',
-    topics: ['SPORTS'],
-    maxArticles: 9,
-    enabled: true,
-  },
-  {
-    id: 'abc_sports',
-    name: 'ABC Sports',
-    domain: 'abcnews.go.com',
-    url: 'https://abcnews.go.com/abcnews/sportsheadlines',
-    topics: ['SPORTS'],
-    maxArticles: 8,
-    enabled: true,
-  },
-];
+export function getSourceLibrary() {
+  return [GOOGLE_NEWS_SOURCE, ...getAllSources()].map(source => ({ ...source, enabled: isSourceEnabled(source) }));
+}
 
 const STORAGE_KEY_CUSTOM_FEEDS = 'news_user_custom_feeds';
 
@@ -628,7 +264,7 @@ export function getCustomFeeds() {
 export function getCustomFeedsForTopic(topicId) {
   if (!topicId) return [];
   const upper = topicId.toUpperCase();
-  return loadCustomFeeds().filter((feed) => feed.enabled && feed.topics?.some((t) => t.toUpperCase() === upper));
+  return loadCustomFeeds().filter((feed) => isSourceEnabled(feed) && feed.topics?.some((t) => t.toUpperCase() === upper));
 }
 
 /**
@@ -641,7 +277,7 @@ export function getCustomFeedsForTopic(topicId) {
 export function getFeedsForTopic(topicId) {
   if (!topicId) return [];
   const upper = topicId.toUpperCase();
-  const defaults = DEFAULT_FEEDS.filter((feed) => feed.enabled && feed.topics.includes(upper));
+  const defaults = DEFAULT_FEEDS.filter((feed) => isSourceEnabled(feed) && feed.topics.includes(upper));
   const custom = getCustomFeedsForTopic(topicId);
   return [...defaults, ...custom];
 }
@@ -707,7 +343,7 @@ export function getFeedsByIds(feedIds) {
   if (!Array.isArray(feedIds) || feedIds.length === 0) return [];
   const all = getAllSources();
   const sourceMap = new Map(all.map((s) => [s.id, s]));
-  return feedIds.map((id) => sourceMap.get(id)).filter(Boolean);
+  return feedIds.map((id) => sourceMap.get(id)).filter(feed => feed && isSourceEnabled(feed));
 }
 
 /**
@@ -782,7 +418,10 @@ export function deleteCustomSource(sourceId) {
  * Resets custom user feeds back to factory defaults.
  */
 export function resetFeedsToDefault() {
+  sessionDisabledSources = null;
+  sessionEnabledSources.clear();
   if (typeof localStorage !== 'undefined') {
     localStorage.removeItem(STORAGE_KEY_CUSTOM_FEEDS);
+    localStorage.removeItem(SOURCE_PREFERENCES_KEY);
   }
 }

@@ -384,9 +384,9 @@
               <div class="topic-sources-header">
                 <label class="topic-form-label">Select Sources to Weave In</label>
                 <div class="topic-sources-quick-actions">
-                  <button type="button" id="btnSelectAllSources" class="source-action-link">Select All</button>
+                  <button type="button" id="btnSelectAllSources" class="source-action-link">Select visible</button>
                   <span class="source-action-sep">•</span>
-                  <button type="button" id="btnClearAllSources" class="source-action-link">Clear</button>
+                  <button type="button" id="btnClearAllSources" class="source-action-link">Clear visible</button>
                 </div>
               </div>
               <div class="topic-source-search-wrap">
@@ -395,7 +395,7 @@
               <div id="topicSourcesChecklist" class="topic-sources-checklist">
                 <!-- Dynamically populated checklist of available sources -->
               </div>
-              <span class="topic-form-hint">Stories from selected sources will be automatically woven into the feed using fair-share quotas (7–10 stories).</span>
+              <span class="topic-form-hint">Choose categories, source groups, or individual feeds. Sources disabled in the library stay off until you enable them there. Keyword topics also use Google News when it is enabled.</span>
             </div>
 
             <!-- Inline Error Alert -->
@@ -447,6 +447,13 @@
                 </div>
                 <input type="text" id="inputSourceCatalogSearch" class="form-input source-filter-input" placeholder="Search catalog...">
               </div>
+              <p class="topic-form-hint">Choose the feeds used across your topics. Google News supplies curated headlines; individual news feeds come directly from publishers. Changes are saved on this device.</p>
+              <div class="source-library-actions">
+                <button type="button" id="enableVisibleSourcesBtn" class="form-btn">Select visible</button>
+                <button type="button" id="disableVisibleSourcesBtn" class="form-btn">Deselect visible</button>
+                <button type="button" id="checkSourcesBtn" class="form-btn">Check enabled feeds</button>
+              </div>
+              <p id="sourceCheckSummary" class="source-check-summary" role="status" aria-live="polite">Feed checks use this browser’s RSS connection and may take a minute.</p>
               <div id="sourcesCatalogList" class="sources-catalog-list">
                 <!-- Dynamically populated list of all available sources -->
               </div>
