@@ -1,25 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <linearGradient id="ow-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#10b981" />
-      <stop offset="100%" stop-color="#047857" />
-    </linearGradient>
-  </defs>
-  <!-- Rounded App Tile Background -->
-  <rect width="512" height="512" rx="112" fill="url(#ow-grad)" />
-
-  <!-- OpenWire Monogram -->
-  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Open 'O' Outer Ring -->
-    <path d="M 346.3 205.15 A 116 116 0 1 0 346.3 306.85" stroke-width="28" />
-    
-    <!-- Top Headline Line -->
-    <line x1="180" y1="205" x2="290" y2="205" stroke-width="20" />
-    
-    <!-- The Open Wire (streaming out through the break) -->
-    <line x1="175" y1="256" x2="386" y2="256" stroke-width="28" />
-    
-    <!-- Bottom Headline Line -->
-    <line x1="180" y1="307" x2="265" y2="307" stroke-width="20" />
+  <title>OpenWire editorial cards</title>
+  <rect width="512" height="512" fill="#f4f3ed" />
+  <!-- One centered mark shared by the header, favicon, and installed app. -->
+  <g id="editorial-cards">
+    <rect x="100" y="116" width="244" height="208" rx="18" fill="#00a887" />
+    <rect x="130" y="152" width="248" height="204" rx="18" fill="#00a887" stroke="#f4f3ed" stroke-width="10" />
+    <rect x="160" y="192" width="252" height="204" rx="18" fill="#121a18" stroke="#f4f3ed" stroke-width="10" />
+    <g fill="#f4f3ed">
+      <rect x="188" y="232" width="196" height="29" rx="6" />
+      <rect x="188" y="282" width="156" height="29" rx="6" />
+      <rect x="188" y="332" width="108" height="29" rx="6" />
+    </g>
   </g>
 </svg>
