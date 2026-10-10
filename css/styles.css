@@ -2461,6 +2461,23 @@ body {
   line-height: 1.5;
 }
 
+.feed-sources-details {
+  margin: -4px 0 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.feed-sources-details summary { cursor: pointer; min-height: 24px; }
+.feed-sources-list { list-style: none; padding: 0; margin: 12px 0; }
+.feed-sources-list li { padding: 8px 0; overflow-wrap: anywhere; }
+.feed-sources-list strong { color: var(--text-primary); display: block; }
+.feed-sources-list span { display: block; }
+#retrySourcesBtn { min-height: 44px; }
+
 .feed-status {
   margin-bottom: 12px;
   color: var(--text-secondary);

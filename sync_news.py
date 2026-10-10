@@ -536,12 +536,15 @@ def build_article_record(topic_name: str, idx: int, title: str, source_name: str
 
 def process_single_google_item(item, topic_name: str, idx: int) -> dict:
     """Processes a single Google News RSS item: decodes link and extracts image."""
-    raw_title = item.find("title").text if item.find("title") is not None else ""
-    link = item.find("link").text if item.find("link") is not None else ""
-    pub_date = item.find("pubDate").text if item.find("pubDate") is not None else ""
+    raw_title = item.findtext("title") or ""
+    link = item.findtext("link") or ""
+    pub_date = item.findtext("pubDate") or ""
+    parsed_link = urllib.parse.urlparse(link)
+    if not raw_title.strip() or parsed_link.scheme not in ("http", "https") or not parsed_link.netloc:
+        return None
     source_elem = item.find("source")
 
-    source_name = source_elem.text if source_elem is not None else ""
+    source_name = (source_elem.text or "") if source_elem is not None else ""
     source_url = source_elem.attrib.get("url", "") if source_elem is not None else ""
 
     if " - " in raw_title:
@@ -616,13 +619,13 @@ def process_direct_feed(feed_cfg: dict, topic_name: str) -> list:
             xml_content = resp.read().decode("utf-8", errors="ignore")
     except Exception as e:
         print(f"  [DIRECT FEED] Error fetching '{feed_name}': {e}")
-        return []
+        raise RuntimeError(f"Could not fetch this feed: {e}") from e
 
     try:
         root = ET.fromstring(xml_content)
     except Exception as e:
         print(f"  [DIRECT FEED] XML parse error for '{feed_name}': {e}")
-        return []
+        raise RuntimeError("The publisher returned an unreadable RSS or Atom feed.") from e
 
     items = root.findall(".//item")
     is_atom = False
@@ -651,8 +654,15 @@ def process_direct_feed(feed_cfg: dict, topic_name: str) -> list:
         if is_atom:
             atom_ns = {"atom": "http://www.w3.org/2005/Atom", "media": "http://search.yahoo.com/mrss/"}
             title_elem = item.find("atom:title", atom_ns) if item.find("atom:title", atom_ns) is not None else item.find("title")
-            link_elem = item.find("atom:link", atom_ns) if item.find("atom:link", atom_ns) is not None else item.find("link")
-            pub_elem = item.find("atom:published", atom_ns) if item.find("atom:published", atom_ns) is not None else (item.find("atom:updated", atom_ns) or item.find("published"))
+            links = item.findall("atom:link", atom_ns) or item.findall("link")
+            link_elem = next((link for link in links if link.attrib.get("rel", "alternate") == "alternate"), None)
+            pub_elem = item.find("atom:published", atom_ns)
+            if pub_elem is None:
+                pub_elem = item.find("atom:updated", atom_ns)
+            if pub_elem is None:
+                pub_elem = item.find("published")
+            if pub_elem is None:
+                pub_elem = item.find("updated")
 
             raw_title = title_elem.text if title_elem is not None else ""
             link = link_elem.attrib.get("href", "") if link_elem is not None else (link_elem.text if link_elem is not None else "")
@@ -671,7 +681,7 @@ def process_direct_feed(feed_cfg: dict, topic_name: str) -> list:
             link = link_elem.text if link_elem is not None else ""
             pub_date = pub_elem.text if pub_elem is not None else ""
 
-        if not raw_title or not link:
+        if not raw_title or not link or urllib.parse.urlparse(link).scheme not in ("http", "https"):
             continue
 
         clean_title = html.unescape(raw_title.strip())
@@ -828,6 +838,8 @@ def process_topic(topic_name: str, primary_url: str) -> list:
     print(f"Processing Topic: [{topic_name.upper()}]")
     print(f"==========================================")
 
+    source_statuses = []
+    primary_error = ""
     # 1. Fetch Primary Google News RSS
     req = urllib.request.Request(primary_url, headers={"User-Agent": "Mozilla/5.0"})
     try:
@@ -836,6 +848,7 @@ def process_topic(topic_name: str, primary_url: str) -> list:
     except Exception as e:
         print(f"Error fetching Google News for {topic_name}: {e}")
         xml_content = ""
+        primary_error = f"Could not fetch this feed: {e}"
 
     google_articles = []
     if xml_content:
@@ -850,9 +863,16 @@ def process_topic(topic_name: str, primary_url: str) -> list:
                     executor.submit(process_single_google_item, item, topic_name, idx)
                     for idx, item in enumerate(selected_items)
                 ]
-                google_articles = [f.result() for f in futures]
+                google_articles = [article for f in futures if (article := f.result())]
         except Exception as e:
             print(f"XML parse error for Google News in {topic_name}: {e}")
+            primary_error = "The publisher returned an unreadable feed."
+
+    updated_at = int(datetime.now(timezone.utc).timestamp() * 1000)
+    source_statuses.append({"name": "Google News", "url": primary_url,
+                            "status": "published" if google_articles else "unavailable",
+                            "count": len(google_articles), "updatedAt": updated_at if google_articles else 0,
+                            "error": "" if google_articles else primary_error or "This feed returned no usable headlines."})
 
     # 2. Fetch Configured Secondary Direct Feeds
     secondary_configs = SECONDARY_FEEDS.get(topic_name, [])
@@ -867,12 +887,19 @@ def process_topic(topic_name: str, primary_url: str) -> list:
             }
             for future in future_to_cfg:
                 cfg = future_to_cfg[future]
+                feed_arts = []
+                feed_error = ""
                 try:
                     feed_arts = future.result()
                     if feed_arts:
                         secondary_groups.append({"feedConfig": cfg, "articles": feed_arts})
                 except Exception as e:
                     print(f"Error processing secondary feed {cfg['name']}: {e}")
+                    feed_error = str(e)
+                source_statuses.append({"name": cfg["name"], "url": cfg["url"],
+                                        "status": "published" if feed_arts else "unavailable",
+                                        "count": len(feed_arts), "updatedAt": updated_at if feed_arts else 0,
+                                        "error": "" if feed_arts else feed_error or "This feed returned no usable headlines."})
 
     # 3. Weave Feeds Together (Smart deduplication + fair-share + anti-clustering)
     final_articles = weave_feeds(
@@ -889,6 +916,10 @@ def process_topic(topic_name: str, primary_url: str) -> list:
             pub = art.get("pubDate", "")
             if not pub:
                 return 0
+            try:
+                return datetime.fromisoformat(pub.replace("Z", "+00:00")).timestamp()
+            except (ValueError, TypeError):
+                pass
             try:
                 import email.utils
                 return email.utils.parsedate_to_datetime(pub).timestamp()
@@ -912,6 +943,9 @@ def process_topic(topic_name: str, primary_url: str) -> list:
 
     img_count = sum(1 for a in final_articles if a.get("imageUrl"))
     print(f"[{topic_name.upper()}] Final woven feed: {len(final_articles)} articles ({img_count} photos).")
+    if final_articles:
+        # Keep the array format compatible with existing clients and caches.
+        final_articles[0]["feedStatus"] = {"sources": source_statuses}
     return final_articles
 
 def write_json_atomic(path, data):

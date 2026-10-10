@@ -145,6 +145,10 @@ const elements = {
   showLockedHeadlinesBtn: document.getElementById('showLockedHeadlinesBtn'),
   retryFeedBtn: document.getElementById('retryFeedBtn'),
   feedUpdateStatus: document.getElementById('feedUpdateStatus'),
+  feedSourcesDetails: document.getElementById('feedSourcesDetails'),
+  feedSourcesSummary: document.getElementById('feedSourcesSummary'),
+  feedSourcesList: document.getElementById('feedSourcesList'),
+  retrySourcesBtn: document.getElementById('retrySourcesBtn'),
   pullRefreshStatus: document.getElementById('pullRefreshStatus'),
   feedSortSelect: document.getElementById('feedSortSelect'),
   topicsBar: document.getElementById('topicsBar'),
@@ -1556,6 +1560,37 @@ function updateLocalMenuLabels() {
 /**
  * Applies active sort order to rawArticles and renders feed into DOM.
  */
+function renderFeedSources(sources = []) {
+  if (!elements.feedSourcesDetails || !elements.feedSourcesList) return;
+  const valid = Array.isArray(sources) ? sources.filter((source) => source && typeof source.name === 'string') : [];
+  elements.feedSourcesDetails.hidden = valid.length === 0;
+  elements.feedSourcesList.innerHTML = '';
+  const unavailable = valid.filter((source) => source.status === 'unavailable').length;
+  const saved = valid.filter((source) => source.status === 'saved').length;
+  elements.feedSourcesSummary.textContent = `Sources (${valid.length})${saved ? ` · ${saved} using saved headlines` : ''}${unavailable ? ` · ${unavailable} unavailable` : ''}`;
+  elements.retrySourcesBtn.hidden = !valid.some((source) => source.error || source.status === 'unavailable');
+  for (const source of valid) {
+    const row = document.createElement('li');
+    const name = document.createElement('strong');
+    name.textContent = source.name;
+    const description = document.createElement('span');
+    const time = source.updatedAt ? new Date(source.updatedAt).toLocaleString() : '';
+    description.textContent = source.status === 'unavailable'
+      ? 'Unavailable for this update.'
+      : source.status === 'saved'
+        ? `Using saved headlines from ${time || 'an earlier update'}.`
+        : `${source.count || 0} headline${source.count === 1 ? '' : 's'} · ${time ? `Updated ${time}` : 'Published feed'}.`;
+    row.appendChild(name);
+    row.appendChild(description);
+    if (source.error) {
+      const error = document.createElement('span');
+      error.textContent = source.error;
+      row.appendChild(error);
+    }
+    elements.feedSourcesList.appendChild(row);
+  }
+}
+
 function applySortAndRender() {
   if (state.sortOrder === 'newest') {
     state.articles = sortArticlesByDate(state.rawArticles, 'newest');
@@ -1580,6 +1615,8 @@ async function loadHeadlines(topicId = state.currentTopic, options = {}) {
   state.sortOrder = preferredSortOrder || (isLatest ? 'newest' : 'curated');
   if (elements.feedSortSelect) elements.feedSortSelect.value = state.sortOrder;
   state.isLoading = true;
+  if (elements.retrySourcesBtn) elements.retrySourcesBtn.disabled = true;
+  if (!sameTopic) renderFeedSources();
   state.currentTopic = topicId;
 
   // Persist current category for browser refresh retention
@@ -1652,13 +1689,16 @@ async function loadHeadlines(topicId = state.currentTopic, options = {}) {
       const updated = (retainCurrent ? state.feedUpdatedAt : updatedAt);
       const time = updated ? new Date(updated).toLocaleString() : 'unknown time';
       const failed = feedStatus.failedFeeds || [];
+      const recovered = failed.filter((feed) => feed.updatedAt).length;
+      const unavailable = failed.length - recovered;
       elements.feedUpdateStatus.textContent = retainCurrent
         ? 'Refresh unavailable. Keeping your current headlines.'
         : feedStatus.refreshFailed
           ? `Refresh unavailable. Showing saved headlines from ${time}.`
-          : `${feedStatus.source === 'live' ? 'Updated' : 'Saved headlines from'} ${time}${failed.length ? ` · ${failed.length} source${failed.length === 1 ? '' : 's'} unavailable` : ''}`;
+          : `${feedStatus.source === 'live' ? 'Updated' : 'Saved headlines from'} ${time}${recovered ? ` · ${recovered} source${recovered === 1 ? '' : 's'} using saved headlines` : ''}${unavailable ? ` · ${unavailable} source${unavailable === 1 ? '' : 's'} unavailable` : ''}`;
       elements.feedUpdateStatus.title = failed.map((feed) => `${feed.name}: ${feed.error}`).join('\n');
     }
+    renderFeedSources(feedStatus?.sources);
 
     elements.loadingState.style.display = 'none';
     elements.feedList.style.display = 'flex';
@@ -1681,12 +1721,14 @@ async function loadHeadlines(topicId = state.currentTopic, options = {}) {
     elements.loadingState.style.display = 'none';
     elements.errorState.style.display = keepVisible ? 'none' : 'block';
     elements.errorMessage.textContent = error?.message || 'Unable to fetch news headlines.';
+    renderFeedSources(error?.sources);
     if (elements.feedUpdateStatus) elements.feedUpdateStatus.textContent = keepVisible
       ? 'Refresh unavailable. Keeping your current headlines.'
       : 'Refresh failed. Please retry shortly.';
   } finally {
     if (requestId === headlinesRequestId) {
       state.isLoading = false;
+      if (elements.retrySourcesBtn) elements.retrySourcesBtn.disabled = false;
       elements.refreshIcon.classList.remove('spin');
     }
   }
@@ -2397,6 +2439,7 @@ function setupEventListeners() {
   });
   setupPullToRefresh();
   elements.retryFeedBtn?.addEventListener('click', () => refreshCurrentTopic());
+  elements.retrySourcesBtn?.addEventListener('click', () => refreshCurrentTopic());
 
   // Hide Locked Filter toggle
   elements.hideLockedCheckbox.checked = state.hideLocked;

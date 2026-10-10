@@ -656,3 +656,66 @@ test('changing a rule updates filter feedback after the articles themselves have
   assert.equal(app.get('feedStatus').textContent, '1 headline');
   assert.equal(app.get('feedList').style.display, 'flex');
 });
+
+test('source failures are readable without hover and retry keeps the selected topic and sort', async () => {
+  const app = createApp({ storage: createStorage({ news_sort_order: 'newest' }) });
+  stubFeedRendering(app);
+  const oldTime = Date.now() - 60000;
+  const sources = [
+    { name: 'Publisher A', status: 'saved', count: 1, updatedAt: oldTime, error: 'Temporarily unavailable' },
+    { name: '<Publisher B>', status: 'unavailable', error: 'Feed returned no usable headlines.' },
+    { name: 'Publisher C', status: 'live', count: 2, updatedAt: Date.now() },
+  ];
+  app.context.fetchTopHeadlines = async (_topic, options) => {
+    options.onStatus({ source: 'live', updatedAt: Date.now(), sources, failedFeeds: sources.slice(0, 2) });
+    return sampleHeadlines;
+  };
+  await app.context.loadHeadlines('BUSINESS');
+  assert.equal(app.get('feedSourcesDetails').hidden, false);
+  assert.match(app.get('feedSourcesSummary').textContent, /1 using saved headlines · 1 unavailable/);
+  assert.equal(app.get('feedSourcesList').children[1].children[0].textContent, '<Publisher B>');
+  assert.match(app.get('feedSourcesList').children[0].children[1].textContent, /Using saved headlines from/);
+  assert.equal(app.get('retrySourcesBtn').hidden, false);
+  assert.equal(app.get('retrySourcesBtn').disabled, false);
+  let finish;
+  let calls = 0;
+  app.context.fetchTopHeadlines = (topic, options) => {
+    calls++;
+    assert.equal(topic, 'BUSINESS');
+    assert.equal(options.forceLive, true);
+    return new Promise(resolve => finish = () => {
+      options.onStatus({ source: 'live', updatedAt: Date.now(), failedFeeds: [], sources: [
+        { name: 'Publisher A', status: 'live', count: 3, updatedAt: Date.now() },
+      ] });
+      resolve(sampleHeadlines);
+    });
+  };
+  app.get('retrySourcesBtn').dispatch('click');
+  assert.equal(app.get('retrySourcesBtn').disabled, true);
+  app.get('refreshBtn').dispatch('click');
+  assert.equal(calls, 1);
+  const pending = app.context.refreshCurrentTopic();
+  finish();
+  await pending;
+  assert.equal(app.get('retrySourcesBtn').hidden, true);
+  assert.equal(app.get('feedSourcesList').children.length, 1);
+  assert.equal(app.get('feedSortSelect').value, 'newest');
+});
+
+test('a new topic hides old source failures and a total outage exposes the new sources', async () => {
+  const app = createApp();
+  stubFeedRendering(app);
+  app.context.console = { ...console, error() {} };
+  app.context.renderFeedSources([{ name: 'Previous topic', status: 'unavailable' }]);
+  let fail;
+  app.context.fetchTopHeadlines = () => new Promise((_resolve, reject) => fail = reject);
+  const pending = app.context.loadHeadlines('WORLD');
+  assert.equal(app.get('feedSourcesDetails').hidden, true);
+  const error = Error('Sources unavailable');
+  error.sources = [{ name: 'New topic source', status: 'unavailable', error: 'Timed out' }];
+  fail(error);
+  await pending;
+  assert.equal(app.get('feedSourcesDetails').hidden, false);
+  assert.equal(app.get('feedSourcesList').children[0].children[0].textContent, 'New topic source');
+  assert.equal(app.get('retrySourcesBtn').disabled, false);
+});

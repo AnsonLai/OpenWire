@@ -57,6 +57,22 @@ test('DEFAULT_FEEDS enforces fair-share quotas between 7 and 10 articles', () =>
   }
 });
 
+test('adding RSS sources reports failed storage instead of falsely claiming they were saved', (t) => {
+  t.mock.method(storageMock, 'setItem', () => { throw new Error('Storage quota exceeded'); });
+  assert.throws(() => addCustomSource({ name: 'RSS source', url: 'https://example.com/rss' }), /could not save your RSS source/);
+  assert.throws(() => addCustomFeed({ name: 'RSS source', url: 'https://example.com/rss', topics: ['TOP'] }), /could not save your RSS source/);
+  assert.deepEqual(getCustomFeeds(), []);
+});
+
+test('RSS URL validation rejects unsupported URLs and distinct case-sensitive paths remain separate', () => {
+  assert.throws(() => addCustomSource({ name: 'Invalid feed', url: 'file:///rss.xml' }), /starting with http/);
+  assert.throws(() => addCustomFeed({ name: 'Invalid feed', url: 'not a URL', topics: ['TOP'] }), /starting with http/);
+  addCustomSource({ name: 'Upper feed', url: 'https://example.com/News.xml' });
+  addCustomSource({ name: 'Lower feed', url: 'https://example.com/news.xml' });
+  assert.equal(getCustomFeeds().length, 2);
+  assert.equal(getAllSources().filter(source => source.url.startsWith('https://example.com/')).length, 2);
+});
+
 test('addCustomFeed creates and persists a feed assigned to a topic', () => {
   const feed = addCustomFeed({
     name: 'Polygon',
@@ -273,4 +289,3 @@ test('getFeedsByIds resolves sources to executable feeds with fair-share quotas'
   assert.equal(feeds[1].domain, 'wired.com');
   assert.equal(feeds[1].maxArticles, 9);
 });
-

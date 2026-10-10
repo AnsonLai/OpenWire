@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test, beforeEach } from 'node:test';
 import { fetchTopHeadlines, fetchLiveFeedItems, verifyFeed, saveLiveCache, getLiveCache } from '../js/newsService.js';
-import { addCustomFeed } from '../js/feedRegistry.js';
+import { addCustomFeed, addCustomSource } from '../js/feedRegistry.js';
+import { addCustomTopic } from '../js/topicRegistry.js';
 
 const store = new Map();
 globalThis.localStorage = {
@@ -29,7 +30,7 @@ test('a failed primary feed does not prevent working publisher sources from load
   assert.equal(articles[0].title, story.title);
   assert.equal(articles[0].source, 'BBC News');
   assert.equal(status.source, 'live');
-  assert.ok(status.failedFeeds.some((feed) => feed.name === 'Primary feed'));
+  assert.ok(status.failedFeeds.some((feed) => feed.name === 'Google News'));
 });
 
 test('the JSON fallback unwraps a proxy response and works for feed verification too', async (t) => {
@@ -181,4 +182,99 @@ test('an entirely damaged cache cannot suppress a healthy live feed', async (t) 
     ? json([], 404) : json({ status: 'ok', items: [story] }));
   const articles = await fetchTopHeadlines('TOP');
   assert.equal(articles[0].title, story.title);
+});
+
+test('a broken first converter falls back and malformed entries cannot discard valid articles', async (t) => {
+  t.mock.method(globalThis, 'fetch', async (input) => String(input).includes('rss2json')
+    ? json({ status: 'ok', items: [null, { title: 'Invalid', link: '/relative' }] })
+    : json({ contents: JSON.stringify({ title: 'Healthy fallback', items: [null, {}, story] }) }));
+  const result = await verifyFeed('https://example.com/partial-payload.xml');
+  assert.deepEqual(result, { ok: true, count: 1, title: 'Healthy fallback' });
+});
+
+function sourcePair() {
+  store.clear();
+  const a = addCustomSource({ name: 'Publisher A', url: 'https://example.com/a.xml' });
+  const b = addCustomSource({ name: 'Publisher B', url: 'https://example.com/b.xml' });
+  return addCustomTopic({ label: 'My publishers', sources: [a.id, b.id] }).id;
+}
+
+test('partial outages keep the failed publisher, preserve its age, and recover on retry', async (t) => {
+  const topic = sourcePair();
+  let outage = false;
+  let status;
+  t.mock.method(globalThis, 'fetch', async (input) => {
+    const url = decodeURIComponent(String(input));
+    if (outage && url.includes('a.xml')) return json({}, 503);
+    return json({ status: 'ok', feed: { title: url.includes('/a.xml') ? 'Publisher A' : 'Publisher B' }, items: [{
+      title: url.includes('/a.xml') ? 'Explorers navigate polar waters' : 'Astronomers photograph distant galaxies',
+      link: url.includes('/a.xml') ? 'https://a.example/polar' : 'https://b.example/galaxies',
+      pubDate: story.pubDate,
+    }] });
+  });
+  await fetchTopHeadlines(topic, { forceLive: true });
+  const entries = JSON.parse(store.get('openwire_source_cache_v1'));
+  const a = entries.find(entry => entry.url.endsWith('/a.xml'));
+  a.updatedAt -= 60000;
+  store.set('openwire_source_cache_v1', JSON.stringify(entries));
+  outage = true;
+  const articles = await fetchTopHeadlines(topic, { forceLive: true, onStatus: value => status = value });
+  assert.equal(articles.length, 2);
+  assert.equal(new Set(articles.map(article => article.id)).size, 2);
+  assert.equal(status.source, 'live');
+  assert.equal(status.sources.find(source => source.name === 'Publisher A').status, 'saved');
+  assert.equal(status.sources.find(source => source.name === 'Publisher A').updatedAt, a.updatedAt);
+  assert.equal(JSON.parse(store.get('openwire_source_cache_v1')).find(entry => entry.url.endsWith('/a.xml')).updatedAt, a.updatedAt);
+  outage = false;
+  await fetchTopHeadlines(topic, { forceLive: true, onStatus: value => status = value });
+  assert.equal(status.failedFeeds.length, 0);
+  assert.ok(status.sources.every(source => source.status === 'live'));
+});
+
+test('a complete outage does not stamp recovered source data as a fresh update', async (t) => {
+  const topic = sourcePair();
+  let outage = false;
+  t.mock.method(globalThis, 'fetch', async () => outage ? json({}, 503) : json({ status: 'ok', items: [story] }));
+  await fetchTopHeadlines(topic, { forceLive: true });
+  const timestamp = getLiveCache(topic).timestamp;
+  outage = true;
+  let status;
+  const articles = await fetchTopHeadlines(topic, { forceLive: true, onStatus: value => status = value });
+  assert.equal(articles.length, 1);
+  assert.equal(status.source, 'saved');
+  assert.equal(status.refreshFailed, true);
+  assert.equal(status.updatedAt, timestamp);
+  assert.equal(getLiveCache(topic).timestamp, timestamp);
+  assert.equal(status.sources.length, 2);
+  assert.ok(status.sources.every(source => source.status === 'saved' && source.error));
+});
+
+test('expired or corrupt source saves cannot be used to populate a partial refresh', async (t) => {
+  const topic = sourcePair();
+  store.set('openwire_source_cache_v1', JSON.stringify([null, {
+    url: 'https://example.com/a.xml', updatedAt: Date.now() - 86400001,
+    articles: [{ title: 'Expired polar expedition', originalUrl: 'https://a.example/old' }],
+  }]));
+  t.mock.method(globalThis, 'fetch', async (input) => decodeURIComponent(String(input)).includes('/b.xml')
+    ? json({ status: 'ok', items: [story] }) : json({}, 503));
+  let status;
+  const articles = await fetchTopHeadlines(topic, { forceLive: true, onStatus: value => status = value });
+  assert.deepEqual(articles.map(article => article.title), [story.title]);
+  assert.equal(status.sources.find(source => source.name === 'Publisher A').status, 'unavailable');
+});
+
+test('published snapshots report individual source failures without using browser converters', async (t) => {
+  store.clear();
+  const sources = [{ name: 'Google News', status: 'published', count: 1, updatedAt: Date.now() },
+    { name: 'BBC', status: 'unavailable', count: 0, error: 'Temporarily unavailable' }];
+  const calls = [];
+  t.mock.method(globalThis, 'fetch', async (input) => {
+    calls.push(String(input));
+    return json([{ ...story, fetchedAt: new Date().toISOString(), feedStatus: { sources } }]);
+  });
+  let status;
+  await fetchTopHeadlines('TOP', { onStatus: value => status = value });
+  assert.deepEqual(calls, ['./news.json']);
+  assert.deepEqual(status.sources, sources);
+  assert.equal(status.failedFeeds[0].name, 'BBC');
 });

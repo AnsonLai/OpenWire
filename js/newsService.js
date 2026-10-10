@@ -148,6 +148,33 @@ function parseTitle(rawTitle, fallbackSource) {
 }
 
 export const LIVE_CACHE_PREFIX = 'openwire_live_cache_';
+const SOURCE_CACHE_KEY = 'openwire_source_cache_v1';
+const SOURCE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+// Retain individual publishers across partial outages without extending their age.
+function readSourceCache() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SOURCE_CACHE_KEY) || '[]');
+    return Array.isArray(saved) ? saved.filter((entry) => entry && typeof entry.url === 'string'
+      && Number.isFinite(entry.updatedAt) && entry.updatedAt <= Date.now()
+      && Date.now() - entry.updatedAt < SOURCE_MAX_AGE_MS) : [];
+  } catch { return []; }
+}
+
+function saveSourceCache(url, articles, updatedAt) {
+  try {
+    const entries = readSourceCache().filter((entry) => entry.url !== url);
+    entries.unshift({ url, updatedAt, articles: articles.slice(0, 60) });
+    localStorage.setItem(SOURCE_CACHE_KEY, JSON.stringify(entries.slice(0, 40)));
+  } catch { /* Headlines still work when browser storage is unavailable. */ }
+}
+
+function getSourceCache(url) {
+  const saved = readSourceCache().find((entry) => entry.url === url);
+  if (!saved) return null;
+  const articles = usableSavedArticles(saved.articles);
+  return articles.length ? { articles, updatedAt: saved.updatedAt } : null;
+}
 
 // Old or interrupted caches can contain incomplete records. Keep usable entries
 // and normalize the link aliases used by RSS converters and older snapshots.
@@ -180,7 +207,7 @@ function getFeedSignature(topicId) {
  * @param {string} topicId 
  * @param {Array<object>} articles 
  */
-export function saveLiveCache(topicId, articles, failedFeeds = []) {
+export function saveLiveCache(topicId, articles, failedFeeds = [], sources = []) {
   if (!topicId || !Array.isArray(articles) || articles.length === 0) return;
   try {
     if (typeof localStorage === 'undefined') return;
@@ -189,6 +216,7 @@ export function saveLiveCache(topicId, articles, failedFeeds = []) {
       timestamp: Date.now(),
       signature: getFeedSignature(topicId),
       failedFeeds,
+      sources,
       articles: articles.slice(0, 70),
     }));
   } catch {
@@ -243,19 +271,21 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
   const clientArticles = clientCache?.articles || [];
   let liveAttempted = false;
   let liveError = null;
+  let sourceStatuses = [];
 
   const formatArticles = (articles) => articles.map((article) => applyStrategyToArticle({
     ...article, timeAgo: formatRelativeTime(article.pubDate), imageUrl: article.imageUrl || '',
   }));
   const report = (source, updatedAt, failedFeeds = [], refreshFailed = false) => {
-    onStatus({ source, updatedAt, failedFeeds, refreshFailed });
+    onStatus({ source, updatedAt, failedFeeds, refreshFailed, sources: sourceStatuses });
   };
 
   // Every source gets a chance even when the primary feed is unavailable.
   const fetchLiveStream = async (cachedArticles = []) => {
     liveAttempted = true;
     const configs = [
-      ...(topicConfig.url ? [{ name: 'Primary feed', url: topicConfig.url, primary: true }] : []),
+      ...(topicConfig.url ? [{ name: topicConfig.url.includes('news.google.com') ? 'Google News' : topicConfig.label,
+        url: topicConfig.url, primary: true }] : []),
       ...configuredFeeds,
     ].filter((cfg, index, all) => all.findIndex((other) => other.url === cfg.url) === index);
     if (!configs.length) throw new Error(`No feed URL or sources configured for topic "${topicId}".`);
@@ -268,17 +298,30 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
         const config = configs[index];
         try {
           const articles = await fetchLiveFeedItems(config.url, topicId, 4500);
-          settled[index] = { config, articles };
+          const updatedAt = Date.now();
+          saveSourceCache(config.url, articles, updatedAt);
+          settled[index] = { config, articles, updatedAt };
         } catch (error) {
-          settled[index] = { config, error: error.message };
+          const saved = getSourceCache(config.url);
+          settled[index] = { config, error: error.message, ...saved };
         }
+        if (settled[index].articles) settled[index].articles = settled[index].articles.map((article, itemIndex) => ({
+          ...article, id: `art-${topicId}-${config.id || 'primary'}-${itemIndex}-${Date.now()}`,
+        }));
       }
+    }));
+    sourceStatuses = settled.map((result) => ({
+      name: result.config.name, url: result.config.url, count: result.articles?.length || 0,
+      status: result.error ? (result.articles?.length ? 'saved' : 'unavailable') : 'live',
+      updatedAt: result.updatedAt || 0, error: result.error || '',
     }));
     const available = settled.filter((result) => result.articles?.length);
     const failed = settled.filter((result) => result.error).map((result) => ({
-      name: result.config.name, error: result.error,
+      name: result.config.name, error: result.error, updatedAt: result.updatedAt || 0,
     }));
-    if (!available.length) {
+    // An entirely failed refresh uses the complete topic fallback; it must not
+    // stamp yesterday's recovered source data as a successful update.
+    if (!available.some((result) => !result.error)) {
       throw new Error('RSS sources are unavailable right now. Please retry shortly. ' + (failed[0]?.error || ''));
     }
     const primary = available.find((result) => result.config.primary);
@@ -300,7 +343,7 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
       }
     }
     articles = formatArticles(isLatest ? sortArticlesByDate(articles, 'newest') : articles);
-    if (getFeedSignature(topicId) === signature) saveLiveCache(topicId, articles, failed);
+    if (getFeedSignature(topicId) === signature) saveLiveCache(topicId, articles, failed, sourceStatuses);
     report('live', Date.now(), failed);
     return articles;
   };
@@ -310,11 +353,13 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
     catch (error) { liveError = error; return null; }
   };
 
-  let fallback = clientArticles.length ? { articles: clientArticles, updatedAt: clientCache.timestamp, failedFeeds: clientCache.failedFeeds } : null;
+  let fallback = clientArticles.length ? { articles: clientArticles, updatedAt: clientCache.timestamp,
+    failedFeeds: clientCache.failedFeeds, sources: clientCache.sources } : null;
   if (forceLive) {
     const live = await tryLive(clientArticles);
     if (live) return live;
   } else if (clientArticles.length && Date.now() - clientCache.timestamp <= maxAgeMs) {
+    sourceStatuses = Array.isArray(clientCache.sources) ? clientCache.sources : [];
     report('saved', clientCache.timestamp, clientCache.failedFeeds);
     return formatArticles(clientArticles);
   }
@@ -335,9 +380,14 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
       if (!data.length) continue;
       const updatedAt = data.reduce((latest, article) =>
         Math.max(latest, Date.parse(article.fetchedAt || article.pubDate) || 0), 0);
-      if (!fallback || updatedAt > fallback.updatedAt) fallback = { articles: data, updatedAt, failedFeeds: [] };
+      const publishedSources = Array.isArray(data[0]?.feedStatus?.sources) ? data[0].feedStatus.sources : [];
+      const publishedFailed = publishedSources.filter((feed) => feed?.status === 'unavailable');
+      if (!fallback || updatedAt > fallback.updatedAt) fallback = {
+        articles: data, updatedAt, failedFeeds: publishedFailed, sources: publishedSources,
+      };
       if (!forceLive && !customized && updatedAt && Date.now() - updatedAt <= maxAgeMs) {
-        report('saved', fallback.updatedAt);
+        sourceStatuses = fallback.sources || [];
+        report('saved', fallback.updatedAt, fallback.failedFeeds);
         const articles = formatArticles(fallback.articles);
         return isLatest ? sortArticlesByDate(articles, 'newest') : articles;
       }
@@ -353,11 +403,15 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
     if (live) return live;
   }
   if (fallback) {
-    report('saved', fallback.updatedAt, fallback.failedFeeds, !!liveError);
+    if (!liveError) sourceStatuses = fallback.sources || [];
+    const failed = liveError ? sourceStatuses.filter((feed) => feed.error) : fallback.failedFeeds;
+    report('saved', fallback.updatedAt, failed, !!liveError);
     const articles = formatArticles(fallback.articles);
     return isLatest ? sortArticlesByDate(articles, 'newest') : articles;
   }
-  throw liveError || new Error('No headlines are available. Please retry shortly.');
+  const error = liveError || new Error('No headlines are available. Please retry shortly.');
+  error.sources = sourceStatuses;
+  throw error;
 }
 
 /**
@@ -427,6 +481,17 @@ export function normalizeFeedItem(item, topicId, index, feedTitle = '') {
 
 const pendingFeeds = new Map();
 
+function usableFeedPayload(items, title) {
+  const valid = Array.isArray(items) ? items.filter((item) => {
+    if (!item || typeof item.title !== 'string' || !item.title.trim()) return false;
+    try {
+      return ['http:', 'https:'].includes(new URL(item.url || item.link || '').protocol);
+    } catch { return false; }
+  }) : [];
+  if (!valid.length) throw new Error('This feed has no articles with valid links.');
+  return { items: valid, title: typeof title === 'string' ? title : '' };
+}
+
 async function fetchFeedPayload(feedUrl, timeoutMs) {
   let parsed;
   try { parsed = new URL(feedUrl); } catch { throw new Error('Please enter a valid RSS or Atom feed URL.'); }
@@ -439,9 +504,8 @@ async function fetchFeedPayload(feedUrl, timeoutMs) {
     });
     if (!response.ok) throw new Error(`RSS provider returned HTTP ${response.status}.`);
     const data = await response.json();
-    if (data.status !== 'ok') throw new Error(data.message || 'RSS provider could not read this feed.');
-    if (Array.isArray(data.items) && data.items.length) return { items: data.items, title: data.feed?.title || '' };
-    failure = 'This feed returned no articles.';
+    if (data?.status !== 'ok') throw new Error(data?.message || 'RSS provider could not read this feed.');
+    return usableFeedPayload(data.items, data.feed?.title);
   } catch (error) { failure = error.message; }
 
   // This converter does not allow browser CORS requests itself. Fetch its JSON
@@ -452,8 +516,9 @@ async function fetchFeedPayload(feedUrl, timeoutMs) {
       responseType: 'json', timeoutMs: Math.max(1, Math.floor(remaining / 2)),
       totalTimeoutMs: remaining, directFirst: false,
     });
-    if (fallback.ok && Array.isArray(fallback.data?.items) && fallback.data.items.length) {
-      return { items: fallback.data.items, title: fallback.data.title || '' };
+    if (fallback.ok) {
+      try { return usableFeedPayload(fallback.data?.items, fallback.data?.title); }
+      catch (error) { failure ||= error.message; }
     }
   }
   throw new Error(`Could not load this RSS feed. ${failure || 'The feed or provider may be unavailable.'}`);
@@ -468,14 +533,7 @@ export async function fetchLiveFeedItems(feedUrl, topicId = 'CUSTOM', timeoutMs 
     pendingFeeds.set(feedUrl, pending);
   }
   const payload = await pendingFeeds.get(feedUrl);
-  const valid = payload.items.filter((item) => {
-    try {
-      const url = new URL(item.url || item.link || '');
-      return ['http:', 'https:'].includes(url.protocol) && typeof item.title === 'string' && item.title.trim();
-    } catch { return false; }
-  });
-  if (!valid.length) throw new Error('This feed has no articles with valid links.');
-  const articles = valid.map((item, index) => normalizeFeedItem(item, topicId, index, payload.title));
+  const articles = payload.items.map((item, index) => normalizeFeedItem(item, topicId, index, payload.title));
   Object.defineProperty(articles, 'feedTitle', { value: payload.title });
   return articles;
 }

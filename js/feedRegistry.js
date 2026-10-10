@@ -408,13 +408,25 @@ export function loadCustomFeeds() {
  * @param {Array<object>} feeds 
  */
 export function saveCustomFeeds(feeds) {
-  if (typeof localStorage !== 'undefined') {
-    try {
+  try {
+    if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_CUSTOM_FEEDS, JSON.stringify(feeds || []));
-    } catch (e) {
-      console.error({ error: e }, 'Failed to save custom feeds to localStorage');
+      return true;
     }
-  }
+  } catch { /* Callers that add a source must report that it wasn't saved. */ }
+  return false;
+}
+
+function persistAddedFeed(feeds) {
+  if (!saveCustomFeeds(feeds)) throw new Error('This browser could not save your RSS source. Allow site storage and try again.');
+}
+
+function validateFeedUrl(url) {
+  try {
+    const parsed = new URL(url);
+    if (['http:', 'https:'].includes(parsed.protocol)) return;
+  } catch { /* Show the same useful message for malformed and unsupported URLs. */ }
+  throw new Error('Please enter an RSS or Atom feed URL starting with http:// or https://.');
 }
 
 /**
@@ -445,6 +457,7 @@ export function addCustomFeed({ name, url, topics = [], maxArticles = 8 }) {
   if (!cleanName || !cleanUrl) {
     throw new Error('Feed name and URL are required.');
   }
+  validateFeedUrl(cleanUrl);
 
   const topicList = Array.isArray(topics) ? topics : [topics];
   const upperTopics = topicList
@@ -460,7 +473,7 @@ export function addCustomFeed({ name, url, topics = [], maxArticles = 8 }) {
   const domain = extractFeedDomain(cleanUrl);
 
   const customFeeds = loadCustomFeeds();
-  const existingIndex = customFeeds.findIndex((f) => f.url.toLowerCase() === cleanUrl.toLowerCase());
+  const existingIndex = customFeeds.findIndex((f) => f.url === cleanUrl);
 
   if (existingIndex >= 0) {
     // Merge topics into existing feed
@@ -476,7 +489,7 @@ export function addCustomFeed({ name, url, topics = [], maxArticles = 8 }) {
       isCustom: true,
     };
     customFeeds[existingIndex] = updated;
-    saveCustomFeeds(customFeeds);
+    persistAddedFeed(customFeeds);
     return updated;
   }
 
@@ -495,7 +508,7 @@ export function addCustomFeed({ name, url, topics = [], maxArticles = 8 }) {
   };
 
   customFeeds.push(newFeed);
-  saveCustomFeeds(customFeeds);
+  persistAddedFeed(customFeeds);
   return newFeed;
 }
 
@@ -589,7 +602,7 @@ export function getAllSources() {
 
   // Custom feeds first so user overrides take precedence
   for (const feed of custom) {
-    const key = (feed.url || '').toLowerCase();
+    const key = feed.url || '';
     if (key && !seenUrls.has(key)) {
       seenUrls.add(key);
       sources.push(feed);
@@ -598,7 +611,7 @@ export function getAllSources() {
 
   // Built-in feeds
   for (const feed of DEFAULT_FEEDS) {
-    const key = (feed.url || '').toLowerCase();
+    const key = feed.url || '';
     if (key && !seenUrls.has(key)) {
       seenUrls.add(key);
       sources.push({ ...feed, isCustom: false });
@@ -648,12 +661,13 @@ export function addCustomSource({ name, url, maxArticles = 8 }) {
   if (!cleanName || !cleanUrl) {
     throw new Error('Source name and URL are required.');
   }
+  validateFeedUrl(cleanUrl);
 
   const quota = Math.max(7, Math.min(10, Number(maxArticles) || 8));
   const domain = extractFeedDomain(cleanUrl);
 
   const customFeeds = loadCustomFeeds();
-  const existingIndex = customFeeds.findIndex((f) => f.url.toLowerCase() === cleanUrl.toLowerCase());
+  const existingIndex = customFeeds.findIndex((f) => f.url === cleanUrl);
 
   if (existingIndex >= 0) {
     const existing = customFeeds[existingIndex];
@@ -666,7 +680,7 @@ export function addCustomSource({ name, url, maxArticles = 8 }) {
       isCustom: true,
     };
     customFeeds[existingIndex] = updated;
-    saveCustomFeeds(customFeeds);
+    persistAddedFeed(customFeeds);
     return updated;
   }
 
@@ -685,7 +699,7 @@ export function addCustomSource({ name, url, maxArticles = 8 }) {
   };
 
   customFeeds.push(newSource);
-  saveCustomFeeds(customFeeds);
+  persistAddedFeed(customFeeds);
   return newSource;
 }
 
