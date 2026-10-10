@@ -9,6 +9,7 @@
  */
 
 import { fetchTopHeadlines, resolveArchiveStatus, applyStrategyToArticle, verifyFeed, sortArticlesByDate, buildStrategyUrl, extractSharedUrl } from './newsService.js';
+import { isGoogleNewsUrl, decodeEmbeddedGoogleUrl, resolvePublisherUrl } from './publisherUrlService.js';
 import {
   getDomainRule,
   getAllDomainRules,
@@ -49,12 +50,13 @@ import {
 } from './feedRegistry.js';
 import { initPWA } from './pwa.js';
 import { exportSettingsAsJson } from './settingsExport.js';
-import { fetchArticleImage } from './imageService.js';
+import { fetchArticleImage, invalidateArticleImage } from './imageService.js';
 
 const STORAGE_KEY_CURRENT_TOPIC = 'news_current_topic';
 const STORAGE_KEY_SORT_ORDER = 'news_sort_order';
 const STORAGE_KEY_QUICK_URL_STRATEGY = 'news_quick_url_strategy';
 let quickUrlReturnFocus = null;
+let quickUrlResolutionId = 0;
 let headlinesRequestId = 0;
 let activeRefresh = null;
 let preferredSortOrder = null;
@@ -285,29 +287,6 @@ export function getFaviconUrl(domain, size = 32) {
 }
 
 /**
- * Generates fallback media HTML when an article image is absent or fails to load.
- * @param {string} domain
- * @param {string} title
- * @returns {string}
- */
-function renderFallbackMedia(domain, title) {
-  const favUrl = getFaviconUrl(domain, 64);
-  if (favUrl) {
-    return `
-      <div class="news-card-fallback-media">
-        <img class="fallback-favicon" src="${favUrl}" alt="" loading="lazy" onerror="this.style.display='none'">
-      </div>
-    `;
-  }
-  const initial = escapeHtml((domain || title || 'N').charAt(0).toUpperCase());
-  return `
-    <div class="news-card-fallback-media">
-      <div class="fallback-favicon-placeholder">${initial}</div>
-    </div>
-  `;
-}
-
-/**
  * Helper: Creates an interactive strategy switcher badge button for a card.
  */
 function createStrategyBadge(article, isHero = false) {
@@ -358,7 +337,7 @@ function processImageResolutionQueue() {
   while (activeImageResolutions < MAX_CONCURRENT_RESOLUTIONS && imageResolutionQueue.length > 0) {
     const nextTask = imageResolutionQueue.shift();
     activeImageResolutions++;
-    nextTask().finally(() => {
+    Promise.resolve().then(nextTask).finally(() => {
       activeImageResolutions--;
       setTimeout(processImageResolutionQueue, 200);
     });
@@ -400,59 +379,74 @@ function resolveCardImage(article, container, imgClassName, options = {}) {
 
   const task = async () => {
     try {
-      const resolvedUrl = await fetchArticleImage(targetUrl);
+      if (!container?.isConnected) return;
+      const resolvedUrl = await fetchArticleImage(targetUrl, { excludeUrl: options.excludeUrl || '' });
       if (!resolvedUrl || !container || !container.isConnected) {
         return;
       }
 
-      // Update article record
-      article.imageUrl = resolvedUrl;
-
       // Preload image before DOM insertion
       const preloader = new Image();
-      preloader.onload = () => {
-        if (!container || !container.isConnected) return;
-
-        if (options.isHero || options.isBanner) {
-          const mediaClass = options.isHero ? 'flip-hero-media' : 'flip-banner-media';
-          let media = container.querySelector(`.${mediaClass}`);
-          if (!media) {
-            media = document.createElement('div');
-            media.className = mediaClass;
-            const overlay = container.querySelector(options.isHero ? '.flip-hero-overlay' : '.flip-banner-overlay');
-            if (overlay) {
-              container.insertBefore(media, overlay);
-            } else {
-              container.insertBefore(media, container.firstChild);
-            }
-          }
-          media.style.display = '';
-          media.innerHTML = '';
-          const img = document.createElement('img');
-          img.className = imgClassName;
-          img.src = resolvedUrl;
-          img.alt = article.title;
-          img.style.opacity = '0';
-          img.style.transition = 'opacity 0.4s ease-in-out';
-          media.appendChild(img);
-          requestAnimationFrame(() => { img.style.opacity = '1'; });
-        } else {
-          container.innerHTML = '';
-          const img = document.createElement('img');
-          img.className = imgClassName;
-          img.src = resolvedUrl;
-          img.alt = article.title;
-          img.loading = 'lazy';
-          img.decoding = 'async';
-          img.style.opacity = '0';
-          img.style.transition = 'opacity 0.4s ease-in-out';
-          container.appendChild(img);
-          requestAnimationFrame(() => { img.style.opacity = '1'; });
-        }
+      preloader.referrerPolicy = 'no-referrer';
+      const loaded = await new Promise(resolve => {
+        const timer = setTimeout(() => resolve(false), 3500);
+        preloader.onload = () => { clearTimeout(timer); resolve(true); };
+        preloader.onerror = () => { clearTimeout(timer); resolve(false); };
+        preloader.src = resolvedUrl;
+      });
+      if (!loaded) { invalidateArticleImage(targetUrl); return; }
+      if (!container.isConnected) return;
+      article.imageUrl = resolvedUrl;
+      const card = container.closest('article');
+      card?.classList.remove('news-card--no-photo');
+      const onImageFailure = () => {
+        article.imageUrl = '';
+        card?.classList.add('news-card--no-photo');
+        invalidateArticleImage(targetUrl);
       };
-      preloader.src = resolvedUrl;
+
+      if (options.isHero || options.isBanner) {
+        const mediaClass = options.isHero ? 'flip-hero-media' : 'flip-banner-media';
+        let media = container.querySelector(`.${mediaClass}`);
+        if (!media) {
+          media = document.createElement('div');
+          media.className = mediaClass;
+          const overlay = container.querySelector(options.isHero ? '.flip-hero-overlay' : '.flip-banner-overlay');
+          if (overlay) {
+            container.insertBefore(media, overlay);
+          } else {
+            container.insertBefore(media, container.firstChild);
+          }
+        }
+        media.style.display = '';
+        media.innerHTML = '';
+        const img = document.createElement('img');
+        img.className = imgClassName;
+        img.referrerPolicy = 'no-referrer';
+        img.src = resolvedUrl;
+        img.alt = article.title;
+        img.onerror = onImageFailure;
+        img.style.opacity = '0';
+        img.style.transition = 'opacity 0.4s ease-in-out';
+        media.appendChild(img);
+        requestAnimationFrame(() => { img.style.opacity = '1'; });
+      } else {
+        container.innerHTML = '';
+        const img = document.createElement('img');
+        img.className = imgClassName;
+        img.referrerPolicy = 'no-referrer';
+        img.src = resolvedUrl;
+        img.alt = article.title;
+        img.onerror = onImageFailure;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.style.opacity = '0';
+        img.style.transition = 'opacity 0.4s ease-in-out';
+        container.appendChild(img);
+        requestAnimationFrame(() => { img.style.opacity = '1'; });
+      }
     } catch {
-      // Gracefully ignore failures; fallback favicon remains visible
+      // Keep the compact text card readable if preview lookup fails
     }
   };
 
@@ -464,8 +458,9 @@ function resolveCardImage(article, container, imgClassName, options = {}) {
 
   // If IntersectionObserver is available, wait until card is within 300px of viewport
   if (cardImageObserver && container) {
-    container._resolveImageTask = task;
-    cardImageObserver.observe(container);
+    const observed = options.card || container;
+    observed._resolveImageTask = task;
+    cardImageObserver.observe(observed);
   } else {
     enqueueImageResolution(task);
   }
@@ -478,6 +473,7 @@ function createFlipHeroCard(article, topicLabel) {
   const card = document.createElement('article');
   card.id = article.id;
   card.className = `flip-hero news-card--${article.status}`;
+  if (!article.imageUrl) card.classList.add('news-card--no-photo');
   if (article.status === 'locked' && state.hideLocked) {
     card.classList.add('news-card--hidden');
   }
@@ -488,13 +484,17 @@ function createFlipHeroCard(article, topicLabel) {
     media.className = 'flip-hero-media';
     const img = document.createElement('img');
     img.className = 'flip-hero-img';
+    img.referrerPolicy = 'no-referrer';
     img.src = article.imageUrl;
     img.alt = article.title;
     img.loading = 'eager';
     img.decoding = 'async';
     img.onerror = () => {
+      const excludeUrl = article.imageUrl;
+      article.imageUrl = '';
+      card.classList.add('news-card--no-photo');
       media.style.display = 'none';
-      resolveCardImage(article, card, 'flip-hero-img', { isHero: true });
+      resolveCardImage(article, card, 'flip-hero-img', { isHero: true, excludeUrl });
     };
     media.appendChild(img);
     card.appendChild(media);
@@ -588,6 +588,7 @@ function createFlipTileCard(article) {
   const card = document.createElement('article');
   card.id = article.id;
   card.className = `flip-tile news-card--${article.status}`;
+  if (!article.imageUrl) card.classList.add('news-card--no-photo');
   if (article.status === 'locked' && state.hideLocked) {
     card.classList.add('news-card--hidden');
   }
@@ -598,18 +599,21 @@ function createFlipTileCard(article) {
   if (article.imageUrl) {
     const img = document.createElement('img');
     img.className = 'flip-tile-img';
+    img.referrerPolicy = 'no-referrer';
     img.src = article.imageUrl;
     img.alt = article.title;
     img.loading = 'lazy';
     img.decoding = 'async';
     img.onerror = () => {
-      media.innerHTML = renderFallbackMedia(article.domain, article.title);
-      resolveCardImage(article, media, 'flip-tile-img');
+      const excludeUrl = article.imageUrl;
+      article.imageUrl = '';
+      card.classList.add('news-card--no-photo');
+      media.innerHTML = '';
+      resolveCardImage(article, media, 'flip-tile-img', { excludeUrl, card });
     };
     media.appendChild(img);
   } else {
-    media.innerHTML = renderFallbackMedia(article.domain, article.title);
-    resolveCardImage(article, media, 'flip-tile-img');
+    resolveCardImage(article, media, 'flip-tile-img', { card });
   }
   card.appendChild(media);
 
@@ -681,6 +685,7 @@ function createFlipRowCard(article) {
   const card = document.createElement('article');
   card.id = article.id;
   card.className = `flip-row news-card--${article.status}`;
+  if (!article.imageUrl) card.classList.add('news-card--no-photo');
   if (article.status === 'locked' && state.hideLocked) {
     card.classList.add('news-card--hidden');
   }
@@ -748,18 +753,21 @@ function createFlipRowCard(article) {
   if (article.imageUrl) {
     const img = document.createElement('img');
     img.className = 'flip-row-img';
+    img.referrerPolicy = 'no-referrer';
     img.src = article.imageUrl;
     img.alt = article.title;
     img.loading = 'lazy';
     img.decoding = 'async';
     img.onerror = () => {
-      media.innerHTML = renderFallbackMedia(article.domain, article.title);
-      resolveCardImage(article, media, 'flip-row-img');
+      const excludeUrl = article.imageUrl;
+      article.imageUrl = '';
+      card.classList.add('news-card--no-photo');
+      media.innerHTML = '';
+      resolveCardImage(article, media, 'flip-row-img', { excludeUrl, card });
     };
     media.appendChild(img);
   } else {
-    media.innerHTML = renderFallbackMedia(article.domain, article.title);
-    resolveCardImage(article, media, 'flip-row-img');
+    resolveCardImage(article, media, 'flip-row-img', { card });
   }
   card.appendChild(media);
 
@@ -780,6 +788,7 @@ function createFlipBannerCard(article, topicLabel) {
   const card = document.createElement('article');
   card.id = article.id;
   card.className = `flip-banner news-card--${article.status}`;
+  if (!article.imageUrl) card.classList.add('news-card--no-photo');
   if (article.status === 'locked' && state.hideLocked) {
     card.classList.add('news-card--hidden');
   }
@@ -790,13 +799,17 @@ function createFlipBannerCard(article, topicLabel) {
     media.className = 'flip-banner-media';
     const img = document.createElement('img');
     img.className = 'flip-banner-img';
+    img.referrerPolicy = 'no-referrer';
     img.src = article.imageUrl;
     img.alt = article.title;
     img.loading = 'lazy';
     img.decoding = 'async';
     img.onerror = () => {
+      const excludeUrl = article.imageUrl;
+      article.imageUrl = '';
+      card.classList.add('news-card--no-photo');
       media.style.display = 'none';
-      resolveCardImage(article, card, 'flip-banner-img', { isBanner: true });
+      resolveCardImage(article, card, 'flip-banner-img', { isBanner: true, excludeUrl });
     };
     media.appendChild(img);
     card.appendChild(media);
@@ -893,6 +906,8 @@ function createFlipBannerCard(article, topicLabel) {
  * Intelligently guided by headline length, photo presence, and balanced pairing.
  */
 function renderFeed() {
+  cardImageObserver?.disconnect();
+  imageResolutionQueue.length = 0;
   elements.feedList.innerHTML = '';
 
   if (state.articles.length === 0) {
@@ -1163,6 +1178,14 @@ function executeOpenQuickUrl() {
   }
 
   const { url: candidate, domain } = parsed;
+  if (isGoogleNewsUrl(candidate)) {
+    if (elements.quickUrlOpenBtn?.disabled) return;
+    // When resolution fails, the clearly labelled fallback opens Google News.
+    // Do not save an archive rule for Google's wrapper domain.
+    closeQuickUrlModal();
+    window.location.href = candidate;
+    return;
+  }
   const stratVal = elements.quickUrlStrategySelect?.value || 'auto';
   const effectiveStrat = stratVal === 'auto' ? (getDomainRule(domain).strategy || STRATEGIES.DIRECT) : stratVal;
 
@@ -1230,6 +1253,7 @@ function openQuickUrlModal(initialUrl = '') {
  * Closes the Quick Article URL modal.
  */
 function closeQuickUrlModal() {
+  quickUrlResolutionId++;
   if (elements.quickUrlModal) {
     elements.quickUrlModal.classList.remove('open');
     if (quickUrlReturnFocus?.isConnected) quickUrlReturnFocus.focus();
@@ -1244,6 +1268,7 @@ function closeQuickUrlModal() {
  * @param {string} inputVal
  */
 function analyzeQuickUrl(inputVal) {
+  const resolutionId = ++quickUrlResolutionId;
   const raw = (inputVal || '').trim();
   const parsed = parseQuickUrl(raw);
   if (elements.quickUrlOpenBtn) {
@@ -1282,6 +1307,42 @@ function analyzeQuickUrl(inputVal) {
       elements.quickUrlError.style.display = 'block';
       elements.quickUrlError.textContent = 'Please enter a valid website or article URL.';
     }
+    return;
+  }
+
+  if (isGoogleNewsUrl(parsed.url)) {
+    const embedded = decodeEmbeddedGoogleUrl(parsed.url);
+    if (embedded) {
+      elements.inputQuickUrl.value = embedded;
+      analyzeQuickUrl(embedded);
+      return;
+    }
+    if (elements.quickUrlRememberCheck) {
+      elements.quickUrlRememberCheck.disabled = true;
+      elements.quickUrlRememberCheck.checked = false;
+    }
+    if (elements.quickUrlDomainBanner) elements.quickUrlDomainBanner.style.display = 'none';
+    if (elements.quickUrlOpenBtn) {
+      elements.quickUrlOpenBtn.disabled = true;
+      elements.quickUrlOpenBtn.textContent = 'Finding article…';
+    }
+    if (elements.quickUrlToolDescription) elements.quickUrlToolDescription.textContent = 'Finding the publisher’s article for this Google News link.';
+    resolvePublisherUrl(parsed.url).catch(() => '').then(resolved => {
+      if (resolutionId !== quickUrlResolutionId || !elements.quickUrlModal.classList.contains('open')) return;
+      if (resolved && !isGoogleNewsUrl(resolved)) {
+        elements.inputQuickUrl.value = resolved;
+        analyzeQuickUrl(resolved);
+      } else {
+        if (elements.quickUrlError) {
+          elements.quickUrlError.style.display = 'block';
+          elements.quickUrlError.textContent = 'Publisher link not found yet. Open Google News, then share the publisher’s URL to use this tool.';
+        }
+        if (elements.quickUrlOpenBtn) {
+          elements.quickUrlOpenBtn.disabled = false;
+          elements.quickUrlOpenBtn.textContent = 'Open Google News';
+        }
+      }
+    });
     return;
   }
 
@@ -1672,7 +1733,7 @@ async function loadHeadlines(topicId = state.currentTopic, options = {}) {
 
   try {
     let feedStatus = null;
-    const rawArticles = await fetchTopHeadlines(topicId, { ...options, onStatus(status) {
+    const rawArticles = await fetchTopHeadlines(topicId, { ...options, previousArticles: keepVisible ? state.articles : [], onStatus(status) {
       feedStatus = status;
     } });
     if (requestId !== headlinesRequestId) return;

@@ -7,7 +7,7 @@
  */
 
 const CACHE_PREFIX = 'openwire-pwa-docs-';
-const CACHE_NAME = 'openwire-pwa-docs-e45048fa581914b1';
+const CACHE_NAME = 'openwire-pwa-docs-63510afbe9b9fd6c';
 const DATA_CACHE_NAME = CACHE_PREFIX + 'news';
 const STATIC_ASSETS = [
   '/OpenWire/',
@@ -22,6 +22,7 @@ const STATIC_ASSETS = [
   '/OpenWire/js/feedWeaver.js',
   '/OpenWire/js/settingsExport.js',
   '/OpenWire/js/archiveService.js',
+  '/OpenWire/js/publisherUrlService.js',
   '/OpenWire/js/fetchProxy.js',
   '/OpenWire/js/pwa.js',
   '/OpenWire/manifest.json',

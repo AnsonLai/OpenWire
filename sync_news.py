@@ -11,7 +11,7 @@ or OpenGraph meta tags, applies paywall bypass strategies, and exports static JS
 files per topic into `data/` and `news.json`.
 
 Run this script locally or in a scheduled GitHub Action to populate your
-Azure Storage $web container for instant, zero-CORS loading with 40-50 rich headlines!
+GitHub Pages site for instant, zero-CORS loading with 40-50 rich headlines!
 """
 
 import os
@@ -20,17 +20,21 @@ import re
 import html
 import tempfile
 import argparse
+import time
 from datetime import datetime, timezone
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
+from html.parser import HTMLParser
+from article_metadata import ArticleMetadataCache
 
 SKIP_PAGE_IMAGES = False
+metadata_cache = ArticleMetadataCache()
 
 # Optional: decode Google News links if googlenewsdecoder is available
 try:
-    from googlenewsdecoder import new_decoderv1
+    from googlenewsdecoder import gnewsdecoder
     HAS_DECODER = True
 except ImportError:
     HAS_DECODER = False
@@ -356,7 +360,7 @@ def is_valid_article_image(url: str, width: int = None, height: int = None) -> b
 
     return True
 
-def extract_page_image(url: str) -> str:
+def _fetch_page_image(url: str) -> str:
     """
     Extracts high-resolution editorial photo from article page while strictly filtering out
     publisher logos, favicons, site icons, author avatars, and tracking pixels.
@@ -418,7 +422,14 @@ def extract_page_image(url: str) -> str:
         for m in json_ld_matches:
             try:
                 data = json.loads(m.group(1))
-                items = data if isinstance(data, list) else [data]
+                roots = data if isinstance(data, list) else [data]
+                items = []
+                for root in roots:
+                    if isinstance(root, dict):
+                        items.append(root)
+                        graph = root.get('@graph')
+                        if isinstance(graph, list):
+                            items.extend(graph)
                 for it in items:
                     if not isinstance(it, dict):
                         continue
@@ -466,11 +477,10 @@ def extract_page_image(url: str) -> str:
         # Tier 5: In-article <figure> or <article> <img> tags
         article_blocks = re.findall(r'<(?:article|figure|main)[^>]*>([\s\S]*?)</(?:article|figure|main)>', chunk, re.I)
         for block in article_blocks:
-            img_tags = re.findall(r'<img[^>]+(?:src|data-src|srcset)=["\']([^"\']+)["\'][^>]*>', block, re.I)
-            for raw_src in img_tags:
-                c = test_candidate(raw_src)
-                if c:
-                    return c
+            parser = FeedImageParser(url)
+            parser.feed(block)
+            if parser.image:
+                return parser.image
 
     # Tier 6: Microlink fallback API for protected sites (403 Forbidden, Cloudflare, SPAs)
     try:
@@ -492,19 +502,39 @@ def extract_page_image(url: str) -> str:
 
     return ""
 
+def extract_page_image(url: str) -> str:
+    if not url or urllib.parse.urlparse(url).hostname == 'news.google.com':
+        return ''
+    return metadata_cache.get('image', url, lambda: _fetch_page_image(url))
+
+
+def resolve_publisher_url(url: str) -> str:
+    if not HAS_DECODER or urllib.parse.urlparse(url).hostname != 'news.google.com':
+        return url
+    def decode():
+        result = gnewsdecoder(url, timeout=4)
+        resolved = result.get('decoded_url', '') if result.get('success') else ''
+        parsed = urllib.parse.urlparse(resolved)
+        host = parsed.hostname or ''
+        return resolved if parsed.scheme in ('http', 'https') and host and host != 'google.com' and not host.endswith('.google.com') else ''
+    return metadata_cache.get('url', url, decode) or url
+
+
 # Backwards compatibility alias
 extract_og_image = extract_page_image
 
-def build_article_record(topic_name: str, idx: int, title: str, source_name: str, canonical_url: str, pub_date: str, image_url: str) -> dict:
+def build_article_record(topic_name: str, idx: int, title: str, source_name: str, canonical_url: str, pub_date: str, image_url: str, publisher_url: str = '') -> dict:
     """Constructs a normalized article record with domain strategy applied."""
     domain = normalize_domain(canonical_url)
+    if domain == 'news.google.com':
+        domain = normalize_domain(publisher_url)
     rule = get_domain_rule(domain)
     strategy = rule["strategy"]
 
     article = {
         "id": f"art-{topic_name}-{idx}",
         "title": title.strip(),
-        "source": rule.get("label") or source_name,
+        "source": source_name or rule.get("label") or 'News',
         "domain": domain,
         "originalUrl": canonical_url,
         "pubDate": pub_date,
@@ -531,6 +561,9 @@ def build_article_record(topic_name: str, idx: int, title: str, source_name: str
         article["status"] = "bypassed"
         article["badge"] = "Archive.is" if strategy == "archive_is" else "Wayback"
         article["targetUrl"] = f"https://archive.is/newest/{canonical_url}" if strategy == "archive_is" else f"https://web.archive.org/web/*/{canonical_url}"
+    if urllib.parse.urlparse(canonical_url).hostname == 'news.google.com':
+        article.update(status='free', badge='Open source', targetUrl=canonical_url,
+                       archiveUrl='', needsArchiveCheck=False)
 
     return article
 
@@ -553,21 +586,50 @@ def process_single_google_item(item, topic_name: str, idx: int) -> dict:
     else:
         title = raw_title
 
-    canonical_url = link
-    if HAS_DECODER and "news.google.com" in link:
-        try:
-            dec = new_decoderv1(link)
-            if dec.get("status"):
-                canonical_url = dec.get("decoded_url")
-        except Exception:
-            pass
+    canonical_url = resolve_publisher_url(link)
 
-    image_url = extract_image_from_xml_item(item)
+    image_url = extract_image_from_xml_item(item, canonical_url)
     if not image_url and not SKIP_PAGE_IMAGES:
         image_url = extract_og_image(canonical_url)
-    return build_article_record(topic_name, idx, title, source_name, canonical_url, pub_date, image_url)
+    article = build_article_record(topic_name, idx, title, source_name, canonical_url, pub_date, image_url, source_url)
+    if urllib.parse.urlparse(link).hostname == 'news.google.com':
+        article['googleNewsUrl'] = link
+    return article
 
-def extract_image_from_xml_item(item) -> str:
+class FeedImageParser(HTMLParser):
+    """Pick an editorial image from an article figure or an RSS HTML fragment."""
+    def __init__(self, base_url):
+        super().__init__()
+        self.base_url = base_url
+        self.image = ''
+
+    def handle_starttag(self, tag, attrs):
+        if tag != 'img' or self.image:
+            return
+        attrs = dict(attrs)
+        sources = []
+        for entry in (attrs.get('srcset') or '').split(','):
+            parts = entry.strip().split()
+            if parts:
+                size = 0
+                if len(parts) > 1 and parts[1].endswith(('w', 'x')):
+                    try:
+                        size = float(parts[1][:-1])
+                    except ValueError:
+                        pass
+                sources.append((size, parts[0]))
+        sources.sort(key=lambda pair: pair[0], reverse=True)
+        sources.extend((0, source) for source in (attrs.get('data-src'), attrs.get('src')) if source)
+        width = int(attrs['width']) if (attrs.get('width') or '').isdigit() else None
+        height = int(attrs['height']) if (attrs.get('height') or '').isdigit() else None
+        for _, source in sources:
+            candidate = urllib.parse.urljoin(self.base_url, source)
+            if is_valid_article_image(candidate, width, height):
+                self.image = candidate
+                break
+
+
+def extract_image_from_xml_item(item, base_url='') -> str:
     """Extracts lead image from RSS item enclosure or media:content tags with 0ms network latency."""
     # 1. Check <enclosure url="..." type="image/..." />
     enclosure = item.find("enclosure")
@@ -605,6 +667,15 @@ def extract_image_from_xml_item(item) -> str:
             if is_valid_article_image(url):
                 return url
 
+    # Many publishers put the lead photo in their RSS description or content.
+    for name in ('description', '{http://purl.org/rss/1.0/modules/content/}encoded', 'summary',
+                 '{http://www.w3.org/2005/Atom}summary', '{http://www.w3.org/2005/Atom}content'):
+        node = item.find(name)
+        if node is not None:
+            parser = FeedImageParser(base_url)
+            parser.feed((node.text or '') + ''.join(ET.tostring(child, encoding='unicode') for child in node))
+            if parser.image:
+                return parser.image
     return ""
 
 def process_direct_feed(feed_cfg: dict, topic_name: str) -> list:
@@ -685,7 +756,7 @@ def process_direct_feed(feed_cfg: dict, topic_name: str) -> list:
             continue
 
         clean_title = html.unescape(raw_title.strip())
-        image_url = extract_image_from_xml_item(item)
+        image_url = extract_image_from_xml_item(item, link)
 
         # Fallback to OG image extraction only if image is absent, limit allows, and not youtube
         if not image_url and not SKIP_PAGE_IMAGES and len(articles) < 3 and "youtube.com" not in link:
@@ -963,6 +1034,23 @@ def write_json_atomic(path, data):
             os.remove(temp_path)
 
 
+def published_publisher_urls():
+    """Expose only successful recent URL resolutions, indexed across Google link variants."""
+    urls = {}
+    now = time.time()
+    for key, entry in metadata_cache.snapshot().items():
+        if not key.startswith('url:') or not entry['value'] or not 0 <= now - entry['at'] < 7 * 86400:
+            continue
+        wrapper = urllib.parse.urlparse(key[4:])
+        match = re.fullmatch(r'/(?:rss/)?(?:articles|read)/([^/]+)/?', wrapper.path)
+        publisher = urllib.parse.urlparse(entry['value'])
+        host = publisher.hostname or ''
+        if wrapper.hostname == 'news.google.com' and match and publisher.scheme in ('http', 'https') \
+                and host and host != 'google.com' and not host.endswith('.google.com'):
+            urls[match.group(1)] = entry['value']
+    return urls
+
+
 def sync():
     """Refresh snapshots, preserving previous files when a topic fails."""
     os.makedirs("data", exist_ok=True)
@@ -986,8 +1074,13 @@ def sync():
         all_results[topic_name] = articles
     if "top" in all_results:
         write_json_atomic("news.json", all_results["top"])
+    try:
+        write_json_atomic(metadata_cache.path, metadata_cache.snapshot())
+    except OSError as error:
+        print(f"Preview cache could not be saved: {error}")
     if not all_results:
         raise RuntimeError("No topics refreshed; preserving existing snapshots.")
+    write_json_atomic('data/publisher_urls.json', published_publisher_urls())
     if failed_topics:
         print("Kept previous snapshots for: " + ", ".join(failed_topics))
     print(f"Refreshed {len(all_results)} of {len(TOPICS)} topics.")

@@ -1,6 +1,7 @@
 # Distribution & build outputs
 dist/
 build/
+data/article_metadata.json
 
 # Node & dependencies
 node_modules/

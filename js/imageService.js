@@ -35,9 +35,12 @@ const REJECT_PATTERNS = [
   /masthead/i,
 ];
 
-// Memory cache for article images (key: articleUrl -> string URL or null)
+// Memory cache for article images (key: full article URL -> expiring cache entry)
 const memoryImageCache = new Map();
-const SESSION_CACHE_KEY_PREFIX = 'news_img_';
+const pendingImages = new Map();
+const SESSION_CACHE_KEY_PREFIX = 'news_img_v2_';
+const IMAGE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+const IMAGE_FAILURE_TTL = 60 * 1000;
 
 /**
  * Checks if an image URL or dimension set represents a logo, favicon, or placeholder.
@@ -125,15 +128,19 @@ function parseSrcsetUrls(srcset) {
  * 
  * @param {string} html - Raw HTML of article page
  * @param {string} baseUrl - Base URL for resolving relative links
- * @returns {string|null} Resolved image URL or null
+ * @returns {string[]} Ordered, distinct preview image URLs
  */
-export function extractImageFromHtml(html, baseUrl) {
-  if (!html || typeof html !== 'string') return null;
+export function extractImageCandidatesFromHtml(html, baseUrl) {
+  if (!html || typeof html !== 'string') return [];
+  const candidates = [];
 
   // Helper to safely resolve and test candidate
   const testCandidate = (candidateUrl, width, height) => {
-    if (!candidateUrl) return null;
-    let resolved = candidateUrl.trim();
+    if (typeof candidateUrl !== 'string' || !candidateUrl.trim()) return null;
+    let resolved = candidateUrl.trim().replace(/&amp;/gi, '&').replace(/&#(x[0-9a-f]+|\d+);/gi, (_match, code) => {
+      const point = code[0].toLowerCase() === 'x' ? parseInt(code.slice(1), 16) : Number(code);
+      return point <= 0x10ffff ? String.fromCodePoint(point) : '';
+    });
     if (resolved.startsWith('//')) {
       resolved = 'https:' + resolved;
     } else if (resolved.startsWith('/') || !resolved.startsWith('http')) {
@@ -150,27 +157,27 @@ export function extractImageFromHtml(html, baseUrl) {
   const ogMatches = html.matchAll(/<meta[^>]+(?:property|name)=["'](?:og:image|og:image:url|og:image:secure_url)["'][^>]+content=["']([^"']+)["']/gi);
   for (const m of ogMatches) {
     const candidate = testCandidate(m[1]);
-    if (candidate) return candidate;
+    if (candidate) candidates.push(candidate);
   }
 
   // Reversed attribute order: content="..." property="og:image"
   const ogMatchesRev = html.matchAll(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|og:image:url|og:image:secure_url)["']/gi);
   for (const m of ogMatchesRev) {
     const candidate = testCandidate(m[1]);
-    if (candidate) return candidate;
+    if (candidate) candidates.push(candidate);
   }
 
   // 2. Twitter Card Meta Tags (twitter:image, twitter:image:src)
   const twMatches = html.matchAll(/<meta[^>]+(?:name|property)=["'](?:twitter:image|twitter:image:src)["'][^>]+content=["']([^"']+)["']/gi);
   for (const m of twMatches) {
     const candidate = testCandidate(m[1]);
-    if (candidate) return candidate;
+    if (candidate) candidates.push(candidate);
   }
 
   const twMatchesRev = html.matchAll(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:name|property)=["'](?:twitter:image|twitter:image:src)["']/gi);
   for (const m of twMatchesRev) {
     const candidate = testCandidate(m[1]);
-    if (candidate) return candidate;
+    if (candidate) candidates.push(candidate);
   }
 
   // 3. Schema.org JSON-LD Article Image
@@ -178,7 +185,7 @@ export function extractImageFromHtml(html, baseUrl) {
   for (const scriptMatch of jsonLdMatches) {
     try {
       const data = JSON.parse(scriptMatch[1]);
-      const items = Array.isArray(data) ? data : [data];
+      const items = (Array.isArray(data) ? data : [data]).flatMap(item => [item, ...(item?.['@graph'] || [])]);
       for (const item of items) {
         if (!item || typeof item !== 'object') continue;
 
@@ -189,25 +196,25 @@ export function extractImageFromHtml(html, baseUrl) {
         if (isArticleType && item.image) {
           if (typeof item.image === 'string') {
             const candidate = testCandidate(item.image);
-            if (candidate) return candidate;
+            if (candidate) candidates.push(candidate);
           } else if (Array.isArray(item.image)) {
             for (const imgItem of item.image) {
               const url = typeof imgItem === 'string' ? imgItem : imgItem?.url;
               const w = typeof imgItem === 'object' ? imgItem?.width : undefined;
               const h = typeof imgItem === 'object' ? imgItem?.height : undefined;
               const candidate = testCandidate(url, w, h);
-              if (candidate) return candidate;
+              if (candidate) candidates.push(candidate);
             }
           } else if (typeof item.image === 'object' && item.image.url) {
             const candidate = testCandidate(item.image.url, item.image.width, item.image.height);
-            if (candidate) return candidate;
+            if (candidate) candidates.push(candidate);
           }
         }
 
         // Secondary: thumbnailUrl
         if (item.thumbnailUrl && typeof item.thumbnailUrl === 'string') {
           const candidate = testCandidate(item.thumbnailUrl);
-          if (candidate) return candidate;
+          if (candidate) candidates.push(candidate);
         }
       }
     } catch {
@@ -219,13 +226,13 @@ export function extractImageFromHtml(html, baseUrl) {
   const linkMatches = html.matchAll(/<link[^>]+rel=["']image_src["'][^>]+href=["']([^"']+)["']/gi);
   for (const m of linkMatches) {
     const candidate = testCandidate(m[1]);
-    if (candidate) return candidate;
+    if (candidate) candidates.push(candidate);
   }
 
   const itempropMatches = html.matchAll(/<meta[^>]+itemprop=["']image["'][^>]+content=["']([^"']+)["']/gi);
   for (const m of itempropMatches) {
     const candidate = testCandidate(m[1]);
-    if (candidate) return candidate;
+    if (candidate) candidates.push(candidate);
   }
 
   // 5. In-article <figure> <img> or <article> <img> tags
@@ -245,7 +252,7 @@ export function extractImageFromHtml(html, baseUrl) {
       if (srcsetMatch) {
         for (const url of parseSrcsetUrls(srcsetMatch[1])) {
           const candidate = testCandidate(url, width, height);
-          if (candidate) return candidate;
+          if (candidate) candidates.push(candidate);
         }
       }
 
@@ -253,12 +260,16 @@ export function extractImageFromHtml(html, baseUrl) {
       const targetSrc = (dataSrcMatch && dataSrcMatch[1]) || (srcMatch && srcMatch[1]);
       if (targetSrc) {
         const candidate = testCandidate(targetSrc, width, height);
-        if (candidate) return candidate;
+        if (candidate) candidates.push(candidate);
       }
     }
   }
 
-  return null;
+  return [...new Set(candidates)];
+}
+
+export function extractImageFromHtml(html, baseUrl) {
+  return extractImageCandidatesFromHtml(html, baseUrl)[0] || null;
 }
 
 /**
@@ -282,6 +293,7 @@ export function validateImageDimensions(imageUrl, timeoutMs = 3500) {
     }
 
     const img = new Image();
+    img.referrerPolicy = 'no-referrer';
     let isResolved = false;
 
     const timer = setTimeout(() => {
@@ -322,20 +334,17 @@ export function validateImageDimensions(imageUrl, timeoutMs = 3500) {
  * @returns {string|null|undefined} Returns string URL if cached, null if cached as empty, undefined if not cached.
  */
 function getCachedImage(articleUrl) {
-  if (memoryImageCache.has(articleUrl)) {
-    return memoryImageCache.get(articleUrl);
-  }
+  let cached = memoryImageCache.get(articleUrl);
   try {
-    const key = SESSION_CACHE_KEY_PREFIX + btoa(articleUrl).slice(0, 32);
-    const val = sessionStorage.getItem(key);
-    if (val !== null) {
-      const parsed = val === '__EMPTY__' ? null : val;
-      memoryImageCache.set(articleUrl, parsed);
-      return parsed;
-    }
+    if (!cached) cached = JSON.parse(sessionStorage.getItem(SESSION_CACHE_KEY_PREFIX + articleUrl) || 'null');
   } catch {
     // Ignore sessionStorage errors
   }
+  if (cached && cached.expiresAt > Date.now() && (cached.url === null || isNotLogoOrFavicon(cached.url))) {
+    memoryImageCache.set(articleUrl, cached);
+    return cached.url;
+  }
+  memoryImageCache.delete(articleUrl);
   return undefined;
 }
 
@@ -345,10 +354,11 @@ function getCachedImage(articleUrl) {
  * @param {string|null} imageUrl 
  */
 function setCachedImage(articleUrl, imageUrl) {
-  memoryImageCache.set(articleUrl, imageUrl);
+  const cached = { url: imageUrl, expiresAt: Date.now() + (imageUrl ? IMAGE_CACHE_TTL : IMAGE_FAILURE_TTL) };
+  memoryImageCache.set(articleUrl, cached);
+  if (memoryImageCache.size > 200) memoryImageCache.delete(memoryImageCache.keys().next().value);
   try {
-    const key = SESSION_CACHE_KEY_PREFIX + btoa(articleUrl).slice(0, 32);
-    sessionStorage.setItem(key, imageUrl || '__EMPTY__');
+    sessionStorage.setItem(SESSION_CACHE_KEY_PREFIX + articleUrl, JSON.stringify(cached));
   } catch {
     // Ignore quota errors
   }
@@ -364,7 +374,12 @@ let microlinkCooldownUntil = 0;
  * @param {string} articleUrl 
  * @returns {Promise<string|null>}
  */
-export async function fetchArticleImage(articleUrl) {
+export function invalidateArticleImage(articleUrl) {
+  memoryImageCache.delete(articleUrl);
+  try { sessionStorage.removeItem(SESSION_CACHE_KEY_PREFIX + articleUrl); } catch { /* Optional cache. */ }
+}
+
+async function resolveArticleImage(articleUrl, { excludeUrl = '' } = {}) {
   if (!articleUrl || typeof articleUrl !== 'string') return null;
   const cleanUrl = articleUrl.trim();
 
@@ -374,14 +389,15 @@ export async function fetchArticleImage(articleUrl) {
   // Check memory & session cache
   const cached = getCachedImage(cleanUrl);
   if (cached !== undefined) {
-    return cached;
+    if (cached !== excludeUrl || !excludeUrl) return cached;
+    invalidateArticleImage(cleanUrl);
   }
 
   try {
     // Tier 1: Fetch article HTML via CORS proxy waterfall
     const result = await fetchWithProxy(cleanUrl, {
       responseType: 'text',
-      timeoutMs: 5000
+      timeoutMs: 2500, totalTimeoutMs: 5000
     });
 
     let htmlContent = '';
@@ -390,8 +406,7 @@ export async function fetchArticleImage(articleUrl) {
     }
 
     if (htmlContent) {
-      const candidate = extractImageFromHtml(htmlContent, cleanUrl);
-      if (candidate) {
+      for (const candidate of extractImageCandidatesFromHtml(htmlContent, cleanUrl).filter(url => url !== excludeUrl).slice(0, 3)) {
         const isValid = await validateImageDimensions(candidate);
         if (isValid) {
           setCachedImage(cleanUrl, candidate);
@@ -416,7 +431,7 @@ export async function fetchArticleImage(articleUrl) {
             const w = imgData.width;
             const h = imgData.height;
 
-            if (isNotLogoOrFavicon(imgUrl, w, h)) {
+            if (imgUrl !== excludeUrl && isNotLogoOrFavicon(imgUrl, w, h)) {
               const isValid = await validateImageDimensions(imgUrl);
               if (isValid) {
                 setCachedImage(cleanUrl, imgUrl);
@@ -434,4 +449,14 @@ export async function fetchArticleImage(articleUrl) {
   // Cache failure so we don't repeat network calls
   setCachedImage(cleanUrl, null);
   return null;
+}
+
+// Cards and repeated renders share one lookup for the same normal article URL.
+export async function fetchArticleImage(articleUrl, options = {}) {
+  const key = `${articleUrl}\n${options.excludeUrl || ''}`;
+  if (!pendingImages.has(key)) {
+    const pending = resolveArticleImage(articleUrl, options).finally(() => pendingImages.delete(key));
+    pendingImages.set(key, pending);
+  }
+  return pendingImages.get(key);
 }

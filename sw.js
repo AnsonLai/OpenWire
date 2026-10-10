@@ -7,7 +7,7 @@
  */
 
 const CACHE_PREFIX = 'openwire-pwa-root-';
-const CACHE_NAME = 'openwire-pwa-root-v26';
+const CACHE_NAME = 'openwire-pwa-root-v29';
 const DATA_CACHE_NAME = CACHE_PREFIX + 'news';
 const STATIC_ASSETS = [
   './',
@@ -22,6 +22,7 @@ const STATIC_ASSETS = [
   './js/feedWeaver.js',
   './js/settingsExport.js',
   './js/archiveService.js',
+  './js/publisherUrlService.js',
   './js/fetchProxy.js',
   './js/pwa.js',
   './manifest.json',

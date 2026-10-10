@@ -9,6 +9,16 @@ import { test } from 'node:test';
 import { formatRelativeTime, TOPICS, applyStrategyToArticle, normalizeFeedItem, verifyFeed, sortArticlesByDate, buildStrategyUrl, extractSharedUrl, fetchTopHeadlines, saveLiveCache, getLiveCache } from '../js/newsService.js';
 import { STRATEGIES } from '../js/domainRegistry.js';
 
+test('unresolved Google wrappers never get wrapped in an archive or another reading tool', () => {
+  const url = 'https://news.google.com/rss/articles/opaque-unresolved?hl=en-CA';
+  for (const strategy of Object.values(STRATEGIES)) assert.equal(buildStrategyUrl(strategy, url), url);
+  const article = applyStrategyToArticle({ originalUrl: url, domain: 'wsj.com', needsArchiveCheck: true }, { strategy: STRATEGIES.ARCHIVE_IS });
+  assert.equal(article.targetUrl, url);
+  assert.equal(article.badge, 'Open source');
+  assert.equal(article.archiveUrl, '');
+  assert.equal(article.needsArchiveCheck, false);
+});
+
 // Polyfill minimal localStorage for Node environment if not present
 if (typeof globalThis.localStorage === 'undefined') {
   const store = new Map();
@@ -176,6 +186,15 @@ test('normalizeFeedItem resolves publisher names from Google News RSS to valid d
   const normalizedUnknown = normalizeFeedItem(unknownSourceItem, 'GENERAL', 1);
   assert.equal(normalizedUnknown.source, 'Unknown Channel Without Dot');
   assert.equal(normalizedUnknown.domain, '');
+});
+
+test('feed image extraction tries usable alternatives and embedded photos instead of accepting a logo', () => {
+  const item = { title: 'Publisher headline', link: 'https://example.com/story', image: 'https://example.com/site-logo.png',
+    thumbnail: { url: 'https://example.com/lead-photo.jpg' } };
+  assert.equal(normalizeFeedItem(item, 'TOP', 0).imageUrl, 'https://example.com/lead-photo.jpg');
+  delete item.thumbnail;
+  item.description = '<img src="/site-logo.png"><img srcset="/small.jpg 300w, /large.jpg 1200w">';
+  assert.equal(normalizeFeedItem(item, 'TOP', 1).imageUrl, 'https://example.com/large.jpg');
 });
 
 test('verifyFeed returns false for empty or non-existent URLs', async () => {

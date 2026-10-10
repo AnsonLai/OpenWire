@@ -166,6 +166,60 @@ test('incoming shares show a populated confirmation without navigating or saving
   assert.equal(services.getDomainRule('nytimes.com').isCustom, false);
 });
 
+test('a shared Google link resolves to the publisher before archive confirmation', async () => {
+  const app = createApp();
+  let finish;
+  app.context.resolvePublisherUrl = () => new Promise(resolve => { finish = resolve; });
+  app.context.openQuickUrlModal('https://news.google.com/rss/articles/shared-story?hl=en-CA');
+  const before = app.window.location.href;
+  assert.equal(app.get('quickUrlOpenBtn').disabled, true);
+  assert.equal(app.get('quickUrlOpenBtn').textContent, 'Finding article…');
+  app.submit();
+  assert.equal(app.window.location.href, before);
+  finish('https://www.wsj.com/news/actual-story');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(app.get('inputQuickUrl').value, 'https://www.wsj.com/news/actual-story');
+  assert.equal(app.get('quickUrlDomainName').textContent, 'wsj.com');
+  assert.equal(app.get('quickUrlOpenBtn').textContent, 'Open with Archive.is');
+  assert.equal(app.window.location.href, before, 'Finding a publisher must still wait for confirmation');
+  app.submit();
+  assert.equal(app.window.location.href, 'https://archive.is/newest/https://www.wsj.com/news/actual-story');
+});
+
+test('an unresolved Google link opens Google News and saves no wrapper-domain rule', async () => {
+  const app = createApp({ storage: createStorage({ news_quick_url_strategy: 'archive_is' }) });
+  app.context.resolvePublisherUrl = async () => '';
+  const wrapper = 'https://news.google.com/rss/articles/not-yet-published';
+  app.context.openQuickUrlModal(wrapper);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(app.get('quickUrlOpenBtn').textContent, 'Open Google News');
+  assert.match(app.get('quickUrlError').textContent, /publisher’s URL/);
+  assert.equal(app.get('quickUrlRememberCheck').disabled, true);
+  app.get('quickUrlRememberCheck').checked = true;
+  app.submit();
+  assert.equal(app.window.location.href, wrapper);
+  assert.equal(Boolean(services.getDomainRule('news.google.com').isCustom), false);
+  assert.equal(app.storage.getItem('news_quick_url_strategy'), 'archive_is');
+});
+
+test('late Google URL results cannot replace a new input or reopen a dismissed dialog', async () => {
+  const app = createApp();
+  let finish;
+  app.context.resolvePublisherUrl = () => new Promise(resolve => { finish = resolve; });
+  app.context.openQuickUrlModal('https://news.google.com/read/previous-share');
+  app.get('inputQuickUrl').value = 'https://bbc.com/new-input';
+  app.get('inputQuickUrl').dispatch('input');
+  finish('https://www.wsj.com/previous-share');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(app.get('inputQuickUrl').value, 'https://bbc.com/new-input');
+  app.context.openQuickUrlModal('https://news.google.com/read/cancelled-share');
+  app.context.closeQuickUrlModal();
+  finish('https://www.wsj.com/cancelled-share');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(app.get('quickUrlModal').classList.contains('open'), false);
+  assert.equal(app.get('inputQuickUrl').value, 'https://news.google.com/read/cancelled-share');
+});
+
 test('tool changes preview only; confirmation persists the choice across app loads', () => {
   const app = createApp();
   app.context.openQuickUrlModal('https://nytimes.com/story');

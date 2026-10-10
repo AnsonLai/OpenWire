@@ -13,7 +13,8 @@ import { checkArchiveIs, checkWayback } from './archiveService.js';
 import { getTopicById } from './topicRegistry.js';
 import { getFeedsForTopic, getCustomFeedsForTopic, getFeedsByIds } from './feedRegistry.js';
 import { weaveFeeds } from './feedWeaver.js';
-import { isNotLogoOrFavicon } from './imageService.js';
+import { isNotLogoOrFavicon, extractImageCandidatesFromHtml } from './imageService.js';
+import { isGoogleNewsUrl, decodeEmbeddedGoogleUrl, resolvePublisherUrl } from './publisherUrlService.js';
 
 // Supported Google News topic feeds
 export const TOPICS = {
@@ -257,10 +258,11 @@ export function getLiveCache(topicId) {
  * @param {object} [options={}]
  * @param {boolean} [options.forceLive=false] - Force bypass cache to fetch live RSS
  * @param {number} [options.maxStaleMinutes=30] - Staleness threshold before pulling live news
+ * @param {Array<object>} [options.previousArticles=[]] - Known photos and publisher URLs from the displayed topic
  * @returns {Promise<Array<object>>} List of article objects
  */
 export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
-  const { forceLive = false, maxStaleMinutes = 30, onStatus = () => {} } = options;
+  const { forceLive = false, maxStaleMinutes = 30, onStatus = () => {}, previousArticles = [] } = options;
   const topicConfig = getTopicById(topicId) || TOPICS[topicId] || TOPICS.TOP;
   const isLatest = ['LATEST', 'BREAKING'].includes(topicId.toUpperCase());
   const maxAgeMs = maxStaleMinutes * 60 * 1000;
@@ -273,8 +275,13 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
   let liveError = null;
   let sourceStatuses = [];
 
-  const formatArticles = (articles) => articles.map((article) => applyStrategyToArticle({
-    ...article, timeAgo: formatRelativeTime(article.pubDate), imageUrl: article.imageUrl || '',
+  const formatArticles = (articles) => Promise.all(articles.map(async (article) => {
+    const publisher = isGoogleNewsUrl(article.originalUrl) ? await resolvePublisherUrl(article.originalUrl) : '';
+    return applyStrategyToArticle({ ...article,
+      ...(publisher ? { googleNewsUrl: article.googleNewsUrl || article.originalUrl,
+        originalUrl: publisher, domain: normalizeDomain(publisher) } : {}),
+      timeAgo: formatRelativeTime(article.pubDate), imageUrl: article.imageUrl || '',
+    });
   }));
   const report = (source, updatedAt, failedFeeds = [], refreshFailed = false) => {
     onStatus({ source, updatedAt, failedFeeds, refreshFailed, sources: sourceStatuses });
@@ -332,8 +339,9 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
       leadAnchorCount: isLatest ? 0 : 2, maxConsecutivePerDomain: 2,
       cadenceInterval: 2, maxTotalArticles: 60,
     });
+    const knownArticles = [...(Array.isArray(previousArticles) ? previousArticles.filter(article => article && typeof article === 'object') : []), ...cachedArticles];
     for (const article of articles) {
-      const match = cachedArticles.find((saved) => isDuplicateArticle(article, saved));
+      const match = knownArticles.find((saved) => isDuplicateArticle(article, saved));
       if (match) {
         if (!article.imageUrl) article.imageUrl = match.imageUrl || '';
         if (article.originalUrl?.includes('news.google.com') && match.originalUrl && !match.originalUrl.includes('news.google.com')) {
@@ -342,7 +350,7 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
         }
       }
     }
-    articles = formatArticles(isLatest ? sortArticlesByDate(articles, 'newest') : articles);
+    articles = await formatArticles(isLatest ? sortArticlesByDate(articles, 'newest') : articles);
     if (getFeedSignature(topicId) === signature) saveLiveCache(topicId, articles, failed, sourceStatuses);
     report('live', Date.now(), failed);
     return articles;
@@ -388,7 +396,7 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
       if (!forceLive && !customized && updatedAt && Date.now() - updatedAt <= maxAgeMs) {
         sourceStatuses = fallback.sources || [];
         report('saved', fallback.updatedAt, fallback.failedFeeds);
-        const articles = formatArticles(fallback.articles);
+        const articles = await formatArticles(fallback.articles);
         return isLatest ? sortArticlesByDate(articles, 'newest') : articles;
       }
       // Topic snapshots and news.json are alternate copies of the same feed.
@@ -406,7 +414,7 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
     if (!liveError) sourceStatuses = fallback.sources || [];
     const failed = liveError ? sourceStatuses.filter((feed) => feed.error) : fallback.failedFeeds;
     report('saved', fallback.updatedAt, failed, !!liveError);
-    const articles = formatArticles(fallback.articles);
+    const articles = await formatArticles(fallback.articles);
     return isLatest ? sortArticlesByDate(articles, 'newest') : articles;
   }
   const error = liveError || new Error('No headlines are available. Please retry shortly.');
@@ -418,7 +426,8 @@ export async function fetchTopHeadlines(topicId = 'TOP', options = {}) {
  * Normalizes an RSS item across multiple provider formats (feed2json, rss2json).
  */
 export function normalizeFeedItem(item, topicId, index, feedTitle = '') {
-  const link = item.url || item.link || '';
+  const feedLink = item.url || item.link || '';
+  const link = decodeEmbeddedGoogleUrl(feedLink) || feedLink;
   const rawTitle = item.title || '';
   const rawDate = item.date_published || item.pubDate || '';
   const pubDate = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(rawDate)
@@ -448,21 +457,14 @@ export function normalizeFeedItem(item, topicId, index, feedTitle = '') {
   }
 
   // Extract real image from converter response (enclosure, thumbnail, image, attachments, or embedded HTML)
-  let imageUrl = item.image || item.banner_image || item.thumbnail || (item.enclosure && (item.enclosure.link || item.enclosure.url)) || (item.attachments && item.attachments[0] && item.attachments[0].url) || '';
-
-  if (!imageUrl) {
-    const htmlSnippet = item.content || item.description || item.content_html || item.summary || '';
-    if (htmlSnippet && typeof htmlSnippet === 'string') {
-      const match = htmlSnippet.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["']/i);
-      if (match && match[1]) {
-        imageUrl = match[1];
-      }
-    }
-  }
-
-  if (imageUrl && !isNotLogoOrFavicon(imageUrl)) {
-    imageUrl = '';
-  }
+  const candidates = [item.image, item.banner_image, item.thumbnail,
+    (!item.enclosure?.type || /^image\//i.test(item.enclosure.type)) ? item.enclosure?.link || item.enclosure?.url : '',
+    ...(Array.isArray(item.attachments) ? item.attachments.filter(attachment =>
+      attachment && (!attachment.mime_type || /^image\//i.test(attachment.mime_type))).map(attachment => attachment.url) : [])];
+  const imageUrl = candidates.map(candidate => typeof candidate === 'string' ? candidate : candidate?.url)
+    .filter(candidate => isNotLogoOrFavicon(candidate))[0]
+    || ['content', 'description', 'content_html', 'summary'].flatMap(field => typeof item[field] === 'string'
+      ? extractImageCandidatesFromHtml(`<article>${item[field]}</article>`, link) : [])[0] || '';
 
   const baseArticle = {
     id: `art-${topicId}-${index}-${Date.now()}`,
@@ -470,6 +472,7 @@ export function normalizeFeedItem(item, topicId, index, feedTitle = '') {
     source: source || domain || 'News',
     domain,
     originalUrl: link,
+    ...(isGoogleNewsUrl(feedLink) ? { googleNewsUrl: feedLink } : {}),
     pubDate,
     timeAgo: formatRelativeTime(pubDate),
     needsArchiveCheck: false,
@@ -533,7 +536,12 @@ export async function fetchLiveFeedItems(feedUrl, topicId = 'CUSTOM', timeoutMs 
     pendingFeeds.set(feedUrl, pending);
   }
   const payload = await pendingFeeds.get(feedUrl);
-  const articles = payload.items.map((item, index) => normalizeFeedItem(item, topicId, index, payload.title));
+  const articles = await Promise.all(payload.items.map(async (item, index) => {
+    const article = normalizeFeedItem(item, topicId, index, payload.title);
+    if (!isGoogleNewsUrl(article.originalUrl)) return article;
+    const resolved = await resolvePublisherUrl(article.originalUrl);
+    return resolved ? applyStrategyToArticle({ ...article, originalUrl: resolved, domain: normalizeDomain(resolved) }) : article;
+  }));
   Object.defineProperty(articles, 'feedTitle', { value: payload.title });
   return articles;
 }
@@ -558,6 +566,11 @@ export async function verifyFeed(feedUrl) {
  */
 export function buildStrategyUrl(strategy, originalUrl) {
   if (!originalUrl) return '';
+  // An unresolved Google wrapper is useful only for opening Google News.
+  if (isGoogleNewsUrl(originalUrl)) {
+    const publisher = decodeEmbeddedGoogleUrl(originalUrl);
+    return publisher ? buildStrategyUrl(strategy, publisher) : originalUrl;
+  }
   switch (strategy) {
     case STRATEGIES.DIRECT:
       return originalUrl;
@@ -597,7 +610,8 @@ export function buildStrategyUrl(strategy, originalUrl) {
  * @returns {object} Updated article
  */
 export function applyStrategyToArticle(article, customRule = null) {
-  let domain = article.domain ? normalizeDomain(article.domain) : '';
+  const embedded = decodeEmbeddedGoogleUrl(article.originalUrl || article.targetUrl);
+  let domain = embedded ? normalizeDomain(embedded) : article.domain ? normalizeDomain(article.domain) : '';
   if (!domain) {
     const fallbackUrl = article.originalUrl || article.targetUrl || '';
     if (fallbackUrl && !fallbackUrl.includes('news.google.com')) {
@@ -609,7 +623,7 @@ export function applyStrategyToArticle(article, customRule = null) {
   }
 
   const rule = customRule || getDomainRule(domain);
-  const originalUrl = article.originalUrl || article.targetUrl;
+  const originalUrl = embedded || article.originalUrl || article.targetUrl;
 
   const updated = {
     ...article,
@@ -620,6 +634,13 @@ export function applyStrategyToArticle(article, customRule = null) {
 
   const targetUrl = buildStrategyUrl(rule.strategy, originalUrl);
   updated.targetUrl = targetUrl;
+  if (isGoogleNewsUrl(originalUrl)) {
+    updated.status = 'free';
+    updated.badge = 'Open source';
+    updated.archiveUrl = '';
+    updated.needsArchiveCheck = false;
+    return updated;
+  }
 
   switch (rule.strategy) {
     case STRATEGIES.DIRECT:

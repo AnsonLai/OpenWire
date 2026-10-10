@@ -1013,6 +1013,36 @@ body {
   font-size: 0.8rem;
 }
 
+/* Compact cards when no editorial photo is available */
+.news-card--no-photo .flip-tile-media,
+.news-card--no-photo .flip-row-media,
+.news-card--no-photo .flip-hero-media,
+.news-card--no-photo .flip-banner-media,
+.news-card--no-photo .flip-hero-overlay,
+.news-card--no-photo .flip-banner-overlay { display: none; }
+
+.flip-hero.news-card--no-photo,
+.flip-banner.news-card--no-photo {
+  min-height: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+}
+
+.news-card--no-photo .flip-hero-title,
+.news-card--no-photo .flip-banner-title {
+  color: var(--text-primary) !important;
+  text-shadow: none;
+}
+
+.news-card--no-photo .flip-hero-source-group,
+.news-card--no-photo .flip-hero-time { color: var(--text-secondary); }
+
+.news-card--no-photo .badge-hero {
+  color: var(--text-primary) !important;
+  background: var(--bg-subtle) !important;
+  border-color: var(--border-color) !important;
+}
+
 /* Publisher Favicon */
 .source-favicon {
   width: 16px;
@@ -1035,38 +1065,6 @@ body {
 
 .news-card-time {
   color: var(--text-muted);
-}
-
-/* Fallback Media Tile (clean publisher watermark) */
-.news-card-fallback-media {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-surface-hover) 100%);
-}
-
-.fallback-favicon {
-  width: 32px;
-  height: 32px;
-  opacity: 0.65;
-  filter: grayscale(15%);
-}
-
-.fallback-favicon-placeholder {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  background: var(--bg-surface);
-  color: var(--text-muted);
-  font-weight: 700;
-  font-size: 1.1rem;
-  border: 1px solid var(--border-subtle);
-  user-select: none;
 }
 
 /* Strategy Badges */
@@ -2455,7 +2453,7 @@ body {
 }
 
 .feed-update-status {
-  margin: 0 0 16px;
+  margin: 24px 0 16px;
   color: var(--text-secondary);
   font-size: 0.8rem;
   line-height: 1.5;

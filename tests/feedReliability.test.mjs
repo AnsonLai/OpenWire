@@ -16,6 +16,30 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 const story = { title: 'A newly discovered satellite', link: 'https://bbc.com/satellite', pubDate: new Date().toISOString() };
 beforeEach((t) => t.mock.method(console, 'debug', () => {}));
 
+test('live RSS and older Pages snapshots reuse published Google-to-publisher mappings', async t => {
+  store.clear();
+  const feed = addCustomSource({ name: 'Wall Street Journal', url: 'https://example.com/resolved-rss.xml' });
+  const topic = addCustomTopic({ label: 'Resolved RSS', sources: [feed.id] }).id;
+  t.mock.method(globalThis, 'fetch', async input => {
+    const url = String(input);
+    if (url.endsWith('/data/publisher_urls.json')) return json({
+      'mapped-live': 'https://www.wsj.com/news/live-publisher', 'mapped-snapshot': 'https://www.wsj.com/news/snapshot-publisher',
+    });
+    if (url.includes('rss2json')) return json({ status: 'ok', feed: { title: 'Wall Street Journal' }, items: [{
+      ...story, link: 'https://news.google.com/rss/articles/mapped-live?hl=en-CA',
+    }] });
+    if (url.includes('news.json')) return json([{ title: 'Snapshot headline',
+      originalUrl: 'https://news.google.com/read/mapped-snapshot?hl=en-US', domain: 'wsj.com', fetchedAt: new Date().toISOString() }]);
+    return json({}, 404);
+  });
+  const live = await fetchTopHeadlines(topic, { forceLive: true });
+  assert.equal(live[0].originalUrl, 'https://www.wsj.com/news/live-publisher');
+  assert.equal(live[0].targetUrl, 'https://archive.is/newest/https://www.wsj.com/news/live-publisher');
+  const saved = await fetchTopHeadlines('TOP');
+  assert.equal(saved[0].originalUrl, 'https://www.wsj.com/news/snapshot-publisher');
+  assert.equal(saved[0].targetUrl, 'https://archive.is/newest/https://www.wsj.com/news/snapshot-publisher');
+});
+
 test('a failed primary feed does not prevent working publisher sources from loading', async (t) => {
   store.clear();
   t.mock.method(globalThis, 'fetch', async (input) => {
@@ -31,6 +55,22 @@ test('a failed primary feed does not prevent working publisher sources from load
   assert.equal(articles[0].source, 'BBC News');
   assert.equal(status.source, 'live');
   assert.ok(status.failedFeeds.some((feed) => feed.name === 'Google News'));
+});
+
+test('a live refresh retains photos and resolved publisher links from the displayed snapshot', async (t) => {
+  store.clear();
+  const feed = addCustomSource({ name: 'BBC News', url: 'https://example.com/photo-refresh.xml' });
+  const topic = addCustomTopic({ label: 'Photo refresh', sources: [feed.id] }).id;
+  const wrapper = 'https://news.google.com/rss/articles/photo-refresh';
+  t.mock.method(globalThis, 'fetch', async () => json({ status: 'ok', feed: { title: 'BBC News' }, items: [{ ...story, link: wrapper }] }));
+  const articles = await fetchTopHeadlines(topic, { forceLive: true, previousArticles: [{
+    ...story, originalUrl: story.link, domain: 'bbc.com', imageUrl: 'https://photos.example/satellite.jpg',
+  }] });
+  assert.equal(articles.length, 1);
+  assert.equal(articles[0].imageUrl, 'https://photos.example/satellite.jpg');
+  assert.equal(articles[0].originalUrl, story.link);
+  assert.equal(articles[0].domain, 'bbc.com');
+  assert.equal(getLiveCache(topic).articles[0].imageUrl, articles[0].imageUrl);
 });
 
 test('the JSON fallback unwraps a proxy response and works for feed verification too', async (t) => {

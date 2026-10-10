@@ -11,7 +11,15 @@ import {
   isNotLogoOrFavicon,
   extractImageFromHtml,
   validateImageDimensions,
+  fetchArticleImage,
+  extractImageCandidatesFromHtml,
 } from '../js/imageService.js';
+
+function mockGlobal(t, key, value) {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, key);
+  Object.defineProperty(globalThis, key, { value, configurable: true });
+  t.after(() => previous ? Object.defineProperty(globalThis, key, previous) : delete globalThis[key]);
+}
 
 test('isNotLogoOrFavicon rejects URLs containing logo and favicon keywords', () => {
   assert.equal(isNotLogoOrFavicon('https://example.com/assets/favicon.ico'), false);
@@ -138,4 +146,75 @@ test('validateImageDimensions works in test environment', async () => {
 
   const invalid = await validateImageDimensions('https://example.com/static/brand-logo.svg');
   assert.equal(invalid, false);
+});
+
+test('preview candidates decode URL entities and include JSON-LD graph images', () => {
+  const html = `<meta property="og:image" content="https://example.com/photo.jpg?w=900&amp;quality=80">
+    <script type="application/ld+json">{"@graph":[{"@type":"NewsArticle","image":{"url":"/second.jpg"}}]}</script>`;
+  assert.deepEqual(extractImageCandidatesFromHtml(html, 'https://example.com/news'), [
+    'https://example.com/photo.jpg?w=900&quality=80', 'https://example.com/second.jpg',
+  ]);
+});
+
+test('articles with the same URL prefix do not share an image cache entry', async (t) => {
+  const session = new Map();
+  mockGlobal(t, 'sessionStorage', {
+    getItem: key => session.get(key) || null,
+    setItem: (key, value) => session.set(key, value),
+  });
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async input => {
+    calls++;
+    return new Response(`<meta property="og:image" content="https://photos.example/${String(input).endsWith('/a') ? 'alpha' : 'beta'}.jpg">`);
+  });
+  const base = 'https://example.com/articles/long-common-prefix/';
+  assert.equal(await fetchArticleImage(base + 'a'), 'https://photos.example/alpha.jpg');
+  assert.equal(await fetchArticleImage(base + 'b'), 'https://photos.example/beta.jpg');
+  assert.equal(await fetchArticleImage(base + 'a'), 'https://photos.example/alpha.jpg');
+  assert.equal(calls, 2);
+  assert.equal(session.size, 2);
+});
+
+test('concurrent image requests share their normal-page metadata fetch', async (t) => {
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => {
+    calls++;
+    return new Response('<meta property="og:image" content="https://photos.example/concurrent.jpg">');
+  });
+  const images = await Promise.all([fetchArticleImage('https://example.com/concurrent-image'), fetchArticleImage('https://example.com/concurrent-image')]);
+  assert.deepEqual(images, ['https://photos.example/concurrent.jpg', 'https://photos.example/concurrent.jpg']);
+  assert.equal(calls, 1);
+});
+
+test('a failed preview lookup can recover after a short cooldown', async (t) => {
+  let now = Date.now();
+  let healthy = false;
+  let calls = 0;
+  t.mock.method(Date, 'now', () => now);
+  t.mock.method(globalThis, 'fetch', async () => {
+    calls++;
+    return healthy ? new Response('<meta property="og:image" content="https://photos.example/recovered.jpg">')
+      : new Response('<html>No photo yet</html>');
+  });
+  const url = 'https://example.com/retry-image';
+  assert.equal(await fetchArticleImage(url), null);
+  const failedCalls = calls;
+  assert.equal(await fetchArticleImage(url), null);
+  assert.equal(calls, failedCalls);
+  healthy = true;
+  now += 61000;
+  assert.equal(await fetchArticleImage(url), 'https://photos.example/recovered.jpg');
+});
+
+test('a broken first preview image does not prevent a healthy second candidate', async (t) => {
+  class TestImage {
+    naturalWidth = 1000;
+    naturalHeight = 600;
+    set src(url) { queueMicrotask(() => url.includes('broken') ? this.onerror?.() : this.onload?.()); }
+  }
+  mockGlobal(t, 'Image', TestImage);
+  t.mock.method(globalThis, 'fetch', async () => new Response(`<meta property="og:image" content="https://photos.example/broken.jpg">
+    <meta name="twitter:image" content="https://photos.example/working.jpg">`));
+  assert.equal(await fetchArticleImage('https://example.com/fallback-image'), 'https://photos.example/working.jpg');
+  assert.equal(await fetchArticleImage('https://example.com/failed-image-cache', { excludeUrl: 'https://photos.example/broken.jpg' }), 'https://photos.example/working.jpg');
 });

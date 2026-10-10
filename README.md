@@ -117,7 +117,7 @@ The included `.github/workflows/pages.yml` refreshes RSS on GitHub's runner and 
 2. In **Settings → Pages → Build and deployment**, choose **GitHub Actions** as the source.
 3. In **Actions**, open **Refresh news and publish Pages** and select **Run workflow** for the first refresh.
 
-The workflow uses the configured Pages base path, tests the app, fetches RSS without browser CORS restrictions, builds `docs/`, and deploys it directly. Scheduled refreshes use images supplied by the feeds and skip crawling article pages. It retains snapshots from the last successful run for any topics that temporarily fail. A complete feed outage fails the run and leaves the deployed site in place.
+The workflow uses the configured Pages base path, tests the app, fetches RSS without browser CORS restrictions, builds `docs/`, and deploys it directly. Photos come from RSS media and descriptions first, then the normal publisher page's public OpenGraph, Twitter, or article metadata. The runner resolves Google News links to publisher URLs and limits new lookups per run to 320 URL resolutions and 400 page-image requests. Successful metadata is reused for seven days; failures can retry after 15 minutes. The cache retains at most 1,000 entries across scheduled runs. Photo failures never block publishing headlines. It retains snapshots from the last successful run for any topics that temporarily fail. A complete feed outage fails the run and leaves the deployed site in place.
 
 For a manual deployment bundle, use `npm run build:docs`. Building does not publish the site.
 
@@ -141,7 +141,9 @@ Every production build fingerprints its app files to create a new service-worker
 
 ## Manual news refresh
 
-Run `python sync_news.py` to regenerate the built-in topic snapshots locally, then `npm run build:docs` to include them in a deployment bundle. Snapshot writes are atomic, unsuccessful topics keep their previous data, and a complete outage exits with an error.
+Google News links are resolved to publisher article URLs before applying reading or archive tools. The scheduled runner publishes successful resolutions in `data/publisher_urls.json`, which live RSS, saved feeds, and shared-link confirmation reuse across Google’s RSS, articles, and read URL variants. Older embedded links can also decode locally. Unknown or failed resolutions open Google News with an “Open source” label; shared links explain how to copy the publisher URL. Unresolved wrappers are never sent to Archive.is, Wayback, or other article tools. Brand-new or custom-topic links may need a publisher URL until the runner has resolved them.
+
+Run `python -m pip install -r requirements.txt`, then `python sync_news.py` to regenerate the built-in topic snapshots locally and `npm run build:docs` to include them in a deployment bundle. Use `--skip-page-images` for feed-only photos and no publisher-page lookups. Snapshot writes are atomic, unsuccessful topics keep their previous data, and a complete outage exits with an error. Articles without photos use compact text layouts. Browser photo lookups share concurrent requests, keep article URLs distinct, and retry failures after a one-minute cooldown.
 
 Run the generator regression tests with:
 

@@ -172,6 +172,7 @@ export function transformServiceWorker(sourceSw, base, cacheKey, revision = 'v22
     ["'./js/feedWeaver.js'", `'${base}js/feedWeaver.js'`],
     ["'./js/settingsExport.js'", `'${base}js/settingsExport.js'`],
     ["'./js/archiveService.js'", `'${base}js/archiveService.js'`],
+    ["'./js/publisherUrlService.js'", `'${base}js/publisherUrlService.js'`],
     ["'./js/fetchProxy.js'", `'${base}js/fetchProxy.js'`],
     ["'./js/pwa.js'", `'${base}js/pwa.js'`],
     ["'./manifest.json'", `'${base}manifest.json'`],
@@ -276,7 +277,7 @@ export function compileTarget({ name, base, outDir, cacheKey }) {
     const src = path.join(__dirname, dir);
     const dest = path.join(outDir, dir);
     if (fs.existsSync(src)) {
-      fs.cpSync(src, dest, { recursive: true });
+      fs.cpSync(src, dest, { recursive: true, filter: (source) => path.basename(source) !== 'article_metadata.json' });
     }
   }
 

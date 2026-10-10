@@ -1,0 +1,4 @@
+# Only the scheduled fetcher needs this; the static app has no runtime dependency.
+googlenewsdecoder==0.2.1
+# The decoder still imports the parser removed by selectolax 1.0.
+selectolax==0.4.12

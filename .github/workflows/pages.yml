@@ -32,6 +32,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
+      - name: Install publisher URL resolver
+        run: python -m pip install -r requirements.txt
       - name: Keep the last successful snapshots for failed feeds
         uses: actions/cache@v4
         with:
@@ -43,7 +45,7 @@ jobs:
       - run: npm test
       - run: python -m unittest discover -s tests -p 'test_*.py'
       - name: Fetch RSS on the runner, without browser CORS restrictions
-        run: python sync_news.py --skip-page-images
+        run: python sync_news.py
       - uses: actions/configure-pages@v5
         id: pages
       - name: Build the configured Pages path

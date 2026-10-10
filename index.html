@@ -241,12 +241,6 @@
     </div>
 
     <p id="pullRefreshStatus" class="pull-refresh-status" role="status" aria-live="polite" hidden></p>
-    <p id="feedUpdateStatus" class="feed-update-status" role="status" aria-live="polite" hidden></p>
-    <details id="feedSourcesDetails" class="feed-sources-details" hidden>
-      <summary id="feedSourcesSummary">Sources</summary>
-      <ul id="feedSourcesList" class="feed-sources-list"></ul>
-      <button id="retrySourcesBtn" type="button" class="form-btn">Retry sources</button>
-    </details>
 
     <!-- Loading State -->
     <div id="loadingState" class="state-container">
@@ -270,6 +264,14 @@
 
     <!-- Articles Feed List -->
     <section id="feedList" class="feed-list" style="display: none;"></section>
+
+    <!-- Feed update and source details follow the headlines -->
+    <p id="feedUpdateStatus" class="feed-update-status" role="status" aria-live="polite" hidden></p>
+    <details id="feedSourcesDetails" class="feed-sources-details" hidden>
+      <summary id="feedSourcesSummary">Sources</summary>
+      <ul id="feedSourcesList" class="feed-sources-list"></ul>
+      <button id="retrySourcesBtn" type="button" class="form-btn">Retry sources</button>
+    </details>
   </main>
 
   <!-- Domain Strategy Management Modal -->

@@ -9,6 +9,7 @@
  */
 
 import { fetchWithProxy } from './fetchProxy.js';
+import { resolvePublisherUrl } from './publisherUrlService.js';
 
 // In-memory cache for the session to prevent repeated requests
 const archiveCache = new Map();
@@ -22,6 +23,8 @@ const archiveCache = new Map();
  */
 export async function checkArchiveIs(targetUrl, timeoutMs = 2800) {
   if (!targetUrl) return { available: false };
+  targetUrl = await resolvePublisherUrl(targetUrl);
+  if (!targetUrl) return { available: false, error: 'Publisher link is not available yet' };
 
   // Return cached result if available
   if (archiveCache.has(targetUrl)) {
@@ -68,6 +71,8 @@ export async function checkArchiveIs(targetUrl, timeoutMs = 2800) {
  */
 export async function checkWayback(targetUrl, timeoutMs = 2800) {
   if (!targetUrl) return { available: false };
+  targetUrl = await resolvePublisherUrl(targetUrl);
+  if (!targetUrl) return { available: false, error: 'Publisher link is not available yet' };
 
   const cacheKey = `wayback:${targetUrl}`;
   if (archiveCache.has(cacheKey)) {
