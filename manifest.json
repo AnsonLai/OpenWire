@@ -1,6 +1,6 @@
 {
-  "name": "OpenWire News",
-  "short_name": "OpenWire",
+  "name": "OpenWire News Reader",
+  "short_name": "OpenWire Reader",
   "description": "Fast news aggregator with smart paywall routing and archive scanning",
   "id": "./",
   "start_url": "./index.html",
