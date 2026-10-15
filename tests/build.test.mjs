@@ -99,6 +99,20 @@ test('transformManifest updates start_url, scope, icons, and share_target', () =
   assert.equal(parsedSubfolder.icons[1].src, '/news_aggregator/icons/icon-192.png');
 });
 
+test('explicit manifest identity survives each deployment and differs from the legacy identity', () => {
+  const source = fs.readFileSync(path.join(projectRoot, 'manifest.json'), 'utf8');
+  for (const base of ['/', '/OpenWire/', '/news_aggregator/']) {
+    const manifest = JSON.parse(transformManifest(source, base));
+    assert.equal(manifest.id, `${base}openwire-reader`);
+    assert.notEqual(manifest.id, base, 'Do not reuse the legacy installed app identity');
+    assert.equal(manifest.start_url, base);
+    assert.equal(manifest.scope, base);
+    assert.equal(manifest.share_target.action, base);
+    assert.deepEqual(JSON.parse(transformManifest(source, base)), manifest,
+      'Rebuilding must keep the installed identity stable');
+  }
+});
+
 test('transformServiceWorker scopes cache name and static assets array', () => {
   const sampleSw = `const CACHE_NAME = 'headlines-pwa-v8';
 const STATIC_ASSETS = [
@@ -180,6 +194,7 @@ test('compileTarget generates complete root and subfolder distributions', () => 
 
   const manifest = JSON.parse(fs.readFileSync(path.join(tempTestDir, 'manifest.json'), 'utf-8'));
   assert.equal(manifest.start_url, '/news_aggregator/');
+  assert.equal(manifest.id, '/news_aggregator/openwire-reader');
 
   const worker = fs.readFileSync(path.join(tempTestDir, 'sw.js'), 'utf8');
   const swSource = fs.readFileSync(path.join(projectRoot, 'sw.js'), 'utf8');
@@ -224,6 +239,7 @@ test('compileTarget generates valid docs distribution with .nojekyll', () => {
 
   const manifest = JSON.parse(fs.readFileSync(path.join(tempDocsDir, 'manifest.json'), 'utf-8'));
   assert.equal(manifest.start_url, '/OpenWire/');
+  assert.equal(manifest.id, '/OpenWire/openwire-reader');
 
   // Verify TARGETS configuration has docs
   assert.ok(TARGETS.docs);

@@ -123,6 +123,8 @@ The workflow uses the configured Pages base path, tests the app, fetches RSS wit
 
 For a manual deployment bundle, use `npm run build:docs`. Building does not publish the site.
 
+The PWA's installed identity comes from `manifest.json`'s `id`, which the build resolves within the deployment path. Keep this ID stable across routine releases; changing `package.json`'s name or version does not change Android's generated app package. Version 1.0.2 deliberately changes the legacy scope-only identity to `openwire-reader` to allow a fresh installation attempt. Devices with an older installation may show both apps after installing the new identity. Android installation still needs confirmation on a device.
+
 ### Feed loading and app updates
 
 Built-in topics load fresh published snapshots or recent device data first. The menu **Refresh** action and pulling down at the top of the page both request live RSS, keeping the current topic and chosen sort order. Sort choices also survive page reloads. Overlapping refreshes share one request; if live RSS fails, older saved results cannot replace headlines already on screen. The status above the headlines shows the update time, unavailable sources, or when a failed refresh is showing saved news. A failing primary feed does not block the remaining publishers.

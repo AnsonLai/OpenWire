@@ -109,6 +109,7 @@ export function transformHtml(sourceHtml, base) {
 
 /**
  * Transforms manifest.json for a given base path:
+ * - Resolves an explicit app identity within the deployment path
  * - Updates start_url and scope
  * - Updates icon src paths
  * 
@@ -119,7 +120,11 @@ export function transformHtml(sourceHtml, base) {
 export function transformManifest(sourceJson, base) {
   const manifest = JSON.parse(sourceJson);
 
-  manifest.id = base;
+  // Keep explicit identities instead of replacing them with the deployment
+  // scope. The manifest ID controls Chrome's installed app / WebAPK identity;
+  // package.json's name and version do not change that identity.
+  const appId = new URL(manifest.id || './', `https://build.invalid${base}`);
+  manifest.id = appId.pathname + appId.search;
   manifest.start_url = base;
   manifest.scope = base;
 
