@@ -5,7 +5,7 @@
   "id": "./openwire-reader",
   "start_url": "./index.html",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#121413",
   "theme_color": "#10b981",
   "orientation": "portrait-primary",
