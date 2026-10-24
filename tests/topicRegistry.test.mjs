@@ -45,6 +45,7 @@ test('getAllTopics returns all default topics when storage is empty', () => {
   const all = getAllTopics();
   assert.equal(all.length, DEFAULT_TOPICS.length);
   assert.equal(all[0].id, 'TOP');
+  assert.deepEqual(all.slice(3, 6).map((t) => t.id), ['CANADA', 'BC', 'VANCOUVER']);
   assert.ok(all.every((t) => t.isVisible === true));
 });
 
