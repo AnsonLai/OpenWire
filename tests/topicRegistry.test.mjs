@@ -156,6 +156,18 @@ test('setLocalEdition updates city and region and adapts topic labels/urls', () 
   assert.ok(localRegionTopic.url.includes('q=%22Ontario%22'));
 });
 
+test('a region containing the default province name still uses its own local query', () => {
+  setLocalEdition('Prince George', 'Northern British Columbia');
+  const region = getTopicById('BC');
+  assert.equal(region.file, null);
+  assert.equal(new URL(region.url).searchParams.get('q'), '"Northern British Columbia"');
+});
+
+test('default city names keep their published feed when capitalization changes', () => {
+  setLocalEdition('vancouver', 'British Columbia');
+  assert.equal(getTopicById('VANCOUVER').url, DEFAULT_TOPICS.find(topic => topic.id === 'VANCOUVER').url);
+});
+
 test('moveTopic reorders topics correctly and boundary checks work', () => {
   const initial = getAllTopics();
   const firstId = initial[0].id; // 'TOP'

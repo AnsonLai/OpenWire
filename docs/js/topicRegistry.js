@@ -253,7 +253,7 @@ export function getAllTopics() {
   const localEdition = getLocalEdition();
 
   const isDefaultCity = localEdition.city.toLowerCase() === 'vancouver';
-  const isDefaultRegion = localEdition.region.toLowerCase().includes('british columbia') || localEdition.region.toLowerCase() === 'bc';
+  const isDefaultRegion = ['british columbia', 'bc'].includes(localEdition.region.toLowerCase());
 
   const defaults = DEFAULT_TOPICS.map((topic) => {
     let label = topic.label;
@@ -263,11 +263,14 @@ export function getAllTopics() {
     // Dynamically apply user's Local Edition city and region
     if (topic.id === 'VANCOUVER') {
       label = `${localEdition.city} (Local)`;
-      url = `https://news.google.com/rss/search?q=${encodeURIComponent(localEdition.city)}&hl=en-CA&gl=CA&ceid=CA:en`;
+      url = isDefaultCity ? topic.url : `https://news.google.com/rss/search?q=${encodeURIComponent(localEdition.city)}&hl=en-CA&gl=CA&ceid=CA:en`;
       file = isDefaultCity ? '/OpenWire/data/news_vancouver.json' : null;
     } else if (topic.id === 'BC') {
       label = `${localEdition.region} (Local)`;
-      url = `https://news.google.com/rss/search?q=${encodeURIComponent('"' + localEdition.region + '"')}&hl=en-CA&gl=CA&ceid=CA:en`;
+      // Keep the published feed's canonical URL for the default location and
+      // aliases. Re-encoding its spaces as %20 instead of + makes newsService
+      // mistake it for a custom location and skip the available snapshot.
+      url = isDefaultRegion ? topic.url : `https://news.google.com/rss/search?q=${encodeURIComponent('"' + localEdition.region + '"')}&hl=en-CA&gl=CA&ceid=CA:en`;
       file = isDefaultRegion ? '/OpenWire/data/news_bc.json' : null;
     }
 

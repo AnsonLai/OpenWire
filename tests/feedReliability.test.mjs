@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test, beforeEach } from 'node:test';
 import { fetchTopHeadlines, fetchLiveFeedItems, verifyFeed, saveLiveCache, getLiveCache } from '../js/newsService.js';
 import { addCustomFeed, addCustomSource } from '../js/feedRegistry.js';
-import { addCustomTopic } from '../js/topicRegistry.js';
+import { addCustomTopic, setLocalEdition } from '../js/topicRegistry.js';
 
 const store = new Map();
 globalThis.localStorage = {
@@ -38,6 +38,49 @@ test('live RSS and older Pages snapshots reuse published Google-to-publisher map
   const saved = await fetchTopHeadlines('TOP');
   assert.equal(saved[0].originalUrl, 'https://www.wsj.com/news/snapshot-publisher');
   assert.equal(saved[0].targetUrl, 'https://archive.is/newest/https://www.wsj.com/news/snapshot-publisher');
+});
+
+for (const region of ['British Columbia', 'BC', 'british columbia']) {
+  test(`the ${region} local edition loads its published feed without browser RSS services`, async (t) => {
+    store.clear();
+    setLocalEdition('Vancouver', region);
+    const calls = [];
+    t.mock.method(globalThis, 'fetch', async (input) => {
+      calls.push(String(input));
+      return String(input) === './data/news_bc.json'
+        ? json([{ ...story, fetchedAt: new Date().toISOString() }])
+        : json({ message: 'RSS provider unavailable' }, 503);
+    });
+    let status;
+    const articles = await fetchTopHeadlines('BC', { onStatus: value => status = value });
+    assert.equal(articles[0].originalUrl, story.link);
+    assert.equal(status.source, 'saved');
+    assert.deepEqual(calls, ['./data/news_bc.json']);
+  });
+}
+
+test('BC retains published headlines when every browser RSS service fails during refresh', async (t) => {
+  store.clear();
+  t.mock.method(globalThis, 'fetch', async (input) => String(input) === './data/news_bc.json'
+    ? json([{ ...story, fetchedAt: new Date().toISOString() }]) : json({}, 503));
+  let status;
+  const articles = await fetchTopHeadlines('BC', { forceLive: true, onStatus: value => status = value });
+  assert.equal(articles[0].originalUrl, story.link);
+  assert.equal(status.source, 'saved');
+  assert.equal(status.refreshFailed, true);
+});
+
+test('a changed local region cannot fall back to British Columbia headlines', async (t) => {
+  store.clear();
+  setLocalEdition('Toronto', 'Ontario');
+  const calls = [];
+  t.mock.method(globalThis, 'fetch', async (input) => {
+    calls.push(String(input));
+    return String(input) === './data/news_bc.json'
+      ? json([{ ...story, fetchedAt: new Date().toISOString() }]) : json({}, 503);
+  });
+  await assert.rejects(fetchTopHeadlines('BC'), /RSS sources are unavailable/);
+  assert.ok(!calls.includes('./data/news_bc.json'));
 });
 
 test('a failed primary feed does not prevent working publisher sources from loading', async (t) => {
