@@ -62,6 +62,17 @@ class PublicPreviewTests(unittest.TestCase):
         self.assertEqual([article['title'] for article in writes['data/news_ai.json']], [lead['title']])
         self.assertEqual(len(writes['data/preview_articles.json']), 2)
 
+    def test_unclosed_paragraphs_inside_article_do_not_leak_outside_text(self):
+        markup = '''<article>
+        <p>First unclosed lead paragraph with enough characters to qualify as a valid preview sentence.
+        <p>Second unclosed paragraph inside the article body that also exceeds forty characters cleanly.
+        </article>
+        <div>Outside footer text that must never be appended to the unclosed paragraph</p></div>'''
+        result = extract_preview(markup)
+        self.assertIn('First unclosed lead paragraph', result)
+        self.assertIn('Second unclosed paragraph', result)
+        self.assertNotIn('Outside footer text', result)
+
 
 if __name__ == '__main__':
     unittest.main()

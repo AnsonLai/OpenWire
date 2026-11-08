@@ -36,14 +36,18 @@ export function initPWA() {
     const installBtn = document.getElementById('installAppBtn');
     if (installBtn) {
       installBtn.style.display = 'inline-flex';
-      installBtn.addEventListener('click', async () => {
-        if (!deferredInstallPrompt) return;
-        deferredInstallPrompt.prompt();
-        const { outcome } = await deferredInstallPrompt.userChoice;
-        console.info({ outcome }, 'User responded to PWA install prompt');
-        deferredInstallPrompt = null;
-        installBtn.style.display = 'none';
-      });
+      if (!installBtn._pwaInstallBound) {
+        installBtn._pwaInstallBound = true;
+        installBtn.addEventListener('click', async () => {
+          const promptEvent = deferredInstallPrompt;
+          if (!promptEvent) return;
+          deferredInstallPrompt = null;
+          installBtn.style.display = 'none';
+          promptEvent.prompt();
+          const { outcome } = await promptEvent.userChoice;
+          console.info({ outcome }, 'User responded to PWA install prompt');
+        });
+      }
     }
   });
 

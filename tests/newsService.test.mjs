@@ -393,3 +393,29 @@ test('fetchTopHeadlines uses fresh client live cache instead of reading older st
   }
 });
 
+test('applyStrategyToArticle clears archiveUrl when switching from archive to non-archive strategy', () => {
+  const baseArticle = {
+    id: 'art-1',
+    title: 'Test Story',
+    originalUrl: 'https://www.ft.com/content/123',
+    domain: 'ft.com',
+  };
+  const archived = applyStrategyToArticle(baseArticle, { strategy: STRATEGIES.ARCHIVE_IS });
+  assert.ok(archived.archiveUrl.includes('archive.is'), 'Archive strategy should set archiveUrl');
+
+  const switchedToSmry = applyStrategyToArticle(archived, { strategy: STRATEGIES.SMRY });
+  assert.equal(switchedToSmry.archiveUrl, '', 'Non-archive strategy must clear stale archiveUrl');
+
+  const switchedToDirect = applyStrategyToArticle(archived, { strategy: STRATEGIES.DIRECT });
+  assert.equal(switchedToDirect.archiveUrl, '', 'Direct strategy must clear stale archiveUrl');
+  assert.equal(switchedToDirect.needsArchiveCheck, false, 'needsArchiveCheck should be deterministically false');
+
+  const fromPendingArchiveCheck = applyStrategyToArticle(
+    { ...baseArticle, needsArchiveCheck: true },
+    { strategy: STRATEGIES.SMRY }
+  );
+  assert.equal(fromPendingArchiveCheck.needsArchiveCheck, false, 'Switching strategy resets stale needsArchiveCheck flag');
+});
+
+
+

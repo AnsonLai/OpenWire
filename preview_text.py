@@ -24,8 +24,27 @@ class PreviewParser(HTMLParser):
         self.schema = []
         self.schema_text = None
 
+    def _flush_paragraph(self):
+        if self.current is not None:
+            paragraph = clean_text(' '.join(self.current))
+            if len(paragraph) >= 40 and len(self.paragraphs) < 3:
+                self.paragraphs.append(paragraph)
+            self.current = None
+
+    def _flush_schema(self):
+        if self.schema_text is not None:
+            try:
+                self.schema.append(json.loads(self.schema_text))
+            except ValueError:
+                pass
+            self.schema_text = None
+
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
+        if tag == 'p' and self.current is not None:
+            self._flush_paragraph()
+            if self.stack and self.stack[-1][0] == 'p':
+                self.stack.pop()
         blocked = tag in ('script', 'style', 'nav', 'aside', 'footer', 'header', 'form', 'noscript', 'button', 'ul', 'ol') \
             or bool(re.search(r'(?:related|recommend|cookie|newsletter|subscribe|promo|advert)',
                               attrs.get('class', '') + ' ' + attrs.get('id', ''), re.I))
@@ -43,21 +62,21 @@ class PreviewParser(HTMLParser):
             self.current = []
 
     def handle_endtag(self, tag):
-        if tag == 'script' and self.schema_text is not None:
-            try:
-                self.schema.append(json.loads(self.schema_text))
-            except ValueError:
-                pass
-            self.schema_text = None
-        if tag == 'p' and self.current is not None:
-            paragraph = clean_text(' '.join(self.current))
-            if len(paragraph) >= 40 and len(self.paragraphs) < 3:
-                self.paragraphs.append(paragraph)
-            self.current = None
+        if tag == 'script':
+            self._flush_schema()
+        if tag == 'p':
+            self._flush_paragraph()
         for index in range(len(self.stack) - 1, -1, -1):
             if self.stack[index][0] == tag:
                 del self.stack[index:]
                 break
+        if self.current is not None and (
+            not any(entry[0] == 'p' for entry in self.stack)
+            or not any(entry[0] == 'article' or entry[2] for entry in self.stack)
+        ):
+            self._flush_paragraph()
+        if self.schema_text is not None and not any(entry[0] == 'script' for entry in self.stack):
+            self._flush_schema()
 
     def handle_data(self, data):
         if self.schema_text is not None:
@@ -72,6 +91,8 @@ class PreviewParser(HTMLParser):
     def result(self):
         if self.fragment:
             return clean_text(' '.join(self.text))
+        self._flush_paragraph()
+        self._flush_schema()
         description = next((self.descriptions[key] for key in ('og:description', 'description', 'twitter:description')
                             if self.descriptions.get(key)), '')
         if not description:
@@ -110,4 +131,3 @@ def extract_feed_preview(item):
             if text:
                 return text
     return ''
-

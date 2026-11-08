@@ -75,9 +75,9 @@ let savedIndex = [];
 let checkedAt = 0;
 let pendingIndex = null;
 export async function fetchPreviewArticles({ force = false } = {}) {
-  if (pendingIndex) return pendingIndex;
+  if (!force && pendingIndex) return pendingIndex;
   if (!force && checkedAt && Date.now() - checkedAt < (savedIndex.length ? 300000 : 30000)) return savedIndex;
-  pendingIndex = (async () => {
+  const request = (async () => {
     try {
       const response = await fetch('./data/preview_articles.json', { cache: 'no-cache', signal: AbortSignal.timeout(2500) });
       if (!response.ok) return savedIndex;
@@ -89,6 +89,9 @@ export async function fetchPreviewArticles({ force = false } = {}) {
       checkedAt = Date.now();
     }
     return savedIndex;
-  })().finally(() => { pendingIndex = null; });
-  return pendingIndex;
+  })().finally(() => {
+    if (pendingIndex === request) pendingIndex = null;
+  });
+  pendingIndex = request;
+  return request;
 }

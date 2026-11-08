@@ -61,7 +61,9 @@ const STORAGE_KEY_SORT_ORDER = 'news_sort_order';
 const STORAGE_KEY_QUICK_URL_STRATEGY = 'news_quick_url_strategy';
 let quickUrlReturnFocus = null;
 let quickUrlResolutionId = 0;
+let lastUnresolvedGoogleUrl = '';
 let headlinesRequestId = 0;
+let topicsResetGeneration = 0;
 let activeRefresh = null;
 let preferredSortOrder = null;
 let hideLockedPreference = false;
@@ -398,14 +400,24 @@ function resolveCardImage(article, container, imgClassName, options = {}) {
         preloader.onerror = () => { clearTimeout(timer); resolve(false); };
         preloader.src = resolvedUrl;
       });
-      if (!loaded) { invalidateArticleImage(targetUrl); return; }
       if (!container.isConnected) return;
+      if (!loaded) { invalidateArticleImage(targetUrl); return; }
       article.imageUrl = resolvedUrl;
       const card = container.closest('article');
       card?.classList.remove('news-card--no-photo');
       const onImageFailure = () => {
         article.imageUrl = '';
         card?.classList.add('news-card--no-photo');
+        if (options.isHero || options.isBanner) {
+          const mediaClass = options.isHero ? 'flip-hero-media' : 'flip-banner-media';
+          const media = container.querySelector?.(`.${mediaClass}`);
+          if (media) {
+            media.style.display = 'none';
+            media.innerHTML = '';
+          }
+        } else {
+          container.innerHTML = '';
+        }
         invalidateArticleImage(targetUrl);
       };
 
@@ -1024,16 +1036,13 @@ function updateCardElement(article) {
   const card = document.getElementById(article.id);
   if (!card) return;
 
-  // Toggle locked state
-  if (article.status === 'locked') {
-    card.classList.add('news-card--locked');
-    if (state.hideLocked) {
-      card.classList.add('news-card--hidden');
-    } else {
-      card.classList.remove('news-card--hidden');
-    }
-  } else {
-    card.classList.remove('news-card--locked', 'news-card--hidden');
+  // Synchronize card status & visibility classes
+  card.classList.remove('news-card--free', 'news-card--bypassed', 'news-card--locked', 'news-card--hidden');
+  if (article.status) {
+    card.classList.add(`news-card--${article.status}`);
+  }
+  if (article.status === 'locked' && state.hideLocked) {
+    card.classList.add('news-card--hidden');
   }
 
   // Update badge
@@ -1064,10 +1073,30 @@ function updateCardElement(article) {
 }
 
 /**
+ * Closes all open modals except the optional target modal to enforce mutual exclusion.
+ * @param {HTMLElement|null} [exceptModal=null]
+ */
+function closeAllModals(exceptModal = null) {
+  if (elements.rulesModal && elements.rulesModal !== exceptModal) {
+    elements.rulesModal.classList.remove('open');
+  }
+  if (elements.topicsModal && elements.topicsModal !== exceptModal) {
+    elements.topicsModal.classList.remove('open');
+  }
+  if (elements.strategySwitcherModal && elements.strategySwitcherModal !== exceptModal) {
+    closeStrategySwitcher();
+  }
+  if (elements.quickUrlModal && elements.quickUrlModal !== exceptModal && elements.quickUrlModal.classList.contains('open')) {
+    closeQuickUrlModal();
+  }
+}
+
+/**
  * Opens the Strategy Switcher Modal for a specific article's domain.
  */
 function openStrategySwitcher(article) {
   if (!elements.strategySwitcherModal) return;
+  closeAllModals(elements.strategySwitcherModal);
 
   const domain = normalizeDomain(article.domain);
   const currentRule = article.rule || { strategy: STRATEGIES.DIRECT };
@@ -1226,6 +1255,8 @@ function executeOpenQuickUrl() {
  */
 function openQuickUrlModal(initialUrl = '') {
   if (!elements.quickUrlModal) return;
+  closeAllModals(elements.quickUrlModal);
+  lastUnresolvedGoogleUrl = '';
   if (!elements.quickUrlModal.classList.contains('open')) {
     quickUrlReturnFocus = document.activeElement;
   }
@@ -1258,6 +1289,7 @@ function openQuickUrlModal(initialUrl = '') {
  */
 function closeQuickUrlModal() {
   quickUrlResolutionId++;
+  lastUnresolvedGoogleUrl = '';
   if (elements.quickUrlModal) {
     elements.quickUrlModal.classList.remove('open');
     if (quickUrlReturnFocus?.isConnected) quickUrlReturnFocus.focus();
@@ -1326,6 +1358,20 @@ function analyzeQuickUrl(inputVal) {
       elements.quickUrlRememberCheck.checked = false;
     }
     if (elements.quickUrlDomainBanner) elements.quickUrlDomainBanner.style.display = 'none';
+    const showUnresolvedGoogleState = () => {
+      if (elements.quickUrlError) {
+        elements.quickUrlError.style.display = 'block';
+        elements.quickUrlError.textContent = 'Publisher link not found yet. Open Google News, then share the publisher’s URL to use this tool.';
+      }
+      if (elements.quickUrlOpenBtn) {
+        elements.quickUrlOpenBtn.disabled = false;
+        elements.quickUrlOpenBtn.textContent = 'Open Google News';
+      }
+    };
+    if (parsed.url === lastUnresolvedGoogleUrl) {
+      showUnresolvedGoogleState();
+      return;
+    }
     if (elements.quickUrlOpenBtn) {
       elements.quickUrlOpenBtn.disabled = true;
       elements.quickUrlOpenBtn.textContent = 'Finding article…';
@@ -1334,17 +1380,12 @@ function analyzeQuickUrl(inputVal) {
     resolvePublisherUrl(parsed.url).catch(() => '').then(resolved => {
       if (resolutionId !== quickUrlResolutionId || !elements.quickUrlModal.classList.contains('open')) return;
       if (resolved && !isGoogleNewsUrl(resolved)) {
+        lastUnresolvedGoogleUrl = '';
         elements.inputQuickUrl.value = resolved;
         analyzeQuickUrl(resolved);
       } else {
-        if (elements.quickUrlError) {
-          elements.quickUrlError.style.display = 'block';
-          elements.quickUrlError.textContent = 'Publisher link not found yet. Open Google News, then share the publisher’s URL to use this tool.';
-        }
-        if (elements.quickUrlOpenBtn) {
-          elements.quickUrlOpenBtn.disabled = false;
-          elements.quickUrlOpenBtn.textContent = 'Open Google News';
-        }
+        lastUnresolvedGoogleUrl = parsed.url;
+        showUnresolvedGoogleState();
       }
     });
     return;
@@ -1455,9 +1496,11 @@ function checkIncomingShare(customInput = null) {
         elements.headerMenuDropdown.classList.remove('open');
         elements.headerMenuDropdown.setAttribute('aria-hidden', 'true');
       }
-      if (elements.rulesModal) elements.rulesModal.classList.remove('open');
-      if (elements.topicsModal) elements.topicsModal.classList.remove('open');
-      if (elements.strategySwitcherModal) elements.strategySwitcherModal.classList.remove('open');
+      if (elements.menuToggleBtn) {
+        elements.menuToggleBtn.classList.remove('active');
+        elements.menuToggleBtn.setAttribute('aria-expanded', 'false');
+      }
+      closeAllModals(elements.quickUrlModal);
 
       openQuickUrlModal(targetUrl);
     }
@@ -1673,6 +1716,9 @@ function applySortAndRender() {
  */
 async function loadHeadlines(topicId = state.currentTopic, options = {}) {
   const requestId = ++headlinesRequestId;
+  if (activeRefresh && activeRefresh.requestId !== requestId) {
+    activeRefresh = null;
+  }
   const sameTopic = topicId === state.displayedTopic;
   const keepVisible = sameTopic && state.rawArticles.length > 0;
   // Resolve defaults before fetching; never overwrite a choice made while waiting.
@@ -1841,7 +1887,10 @@ function setupPullToRefresh() {
     const dx = Math.abs(touch.clientX - gesture.x);
     if (dy < 0 || (dx > 10 && dx > dy)) { reset(); return; }
     gesture.distance = dy;
-    if (dy < 10) return;
+    if (dy < 10) {
+      if (elements.pullRefreshStatus) elements.pullRefreshStatus.hidden = true;
+      return;
+    }
     if (event.cancelable) event.preventDefault();
     if (elements.pullRefreshStatus) {
       elements.pullRefreshStatus.hidden = false;
@@ -2189,6 +2238,13 @@ let checkingSources = false;
 function changeLibrarySources(feeds, enabled) {
   // Ignore any request started before the selection changed.
   headlinesRequestId++;
+  activeRefresh = null;
+  state.isLoading = false;
+  if (elements.retrySourcesBtn) elements.retrySourcesBtn.disabled = false;
+  elements.refreshIcon?.classList.remove('spin');
+  if (elements.loadingState) elements.loadingState.style.display = 'none';
+  if (elements.errorState) elements.errorState.style.display = 'none';
+  if (elements.feedList) elements.feedList.style.display = 'flex';
   const stored = setSourcesEnabled(feeds, enabled);
   renderSourcesCatalog(sourceSearchValue(elements.inputSourceCatalogSearch));
   renderTopicSourcesChecklist(sourceSearchValue(elements.inputTopicSourceSearch));
@@ -2411,6 +2467,9 @@ function renderRulesTable() {
       deleteBtn.addEventListener('click', () => {
         deleteDomainRule(domain);
         const defaultRule = getAllDomainRules()[domain];
+        state.rawArticles = (state.rawArticles || []).map((art) =>
+          normalizeDomain(art.domain) === domain ? applyStrategyToArticle(art, defaultRule) : art
+        );
         state.articles = state.articles.map((art) => {
           if (normalizeDomain(art.domain) === domain) {
             const updated = applyStrategyToArticle(art, defaultRule);
@@ -2419,6 +2478,7 @@ function renderRulesTable() {
           }
           return art;
         });
+        updateStatusCounter();
         renderRulesTable();
         showToast(`✓ Reverted <strong>${domain}</strong> to default`);
       });
@@ -2496,8 +2556,11 @@ function setupEventListeners() {
 
     // Close on Escape
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && elements.headerMenuDropdown.classList.contains('open')) {
-        toggleMenu(false);
+      if (e.key === 'Escape') {
+        if (elements.headerMenuDropdown.classList.contains('open')) {
+          toggleMenu(false);
+        }
+        closeAllModals();
       }
     });
 
@@ -2536,6 +2599,7 @@ function setupEventListeners() {
 
   // Open / Close Rules Modal
   elements.openRulesBtn.addEventListener('click', () => {
+    closeAllModals(elements.rulesModal);
     renderRulesTable();
     elements.rulesModal.classList.add('open');
   });
@@ -2593,7 +2657,10 @@ function setupEventListeners() {
           .filter((control) => !control.disabled && control.getClientRects().length);
         const first = controls[0];
         const last = controls[controls.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
+        if (!controls.includes(document.activeElement)) {
+          e.preventDefault();
+          (e.shiftKey ? last : first)?.focus();
+        } else if (e.shiftKey && document.activeElement === first) {
           e.preventDefault();
           last?.focus();
         } else if (!e.shiftKey && document.activeElement === last) {
@@ -2725,6 +2792,7 @@ function setupEventListeners() {
   // Open / Close Topics Modal
   if (elements.openTopicsBtn && elements.topicsModal) {
     elements.openTopicsBtn.addEventListener('click', () => {
+      closeAllModals(elements.topicsModal);
       if (elements.newTopicFormError) {
         elements.newTopicFormError.style.display = 'none';
         elements.newTopicFormError.textContent = '';
@@ -2882,6 +2950,8 @@ function setupEventListeners() {
       if (btnSpinner) btnSpinner.style.display = 'inline-block';
       if (btnText) btnText.textContent = 'Verifying topic feed...';
 
+      const resetGen = topicsResetGeneration;
+
       try {
         // If keywords are specified, verify Google News RSS feed
         if (keywordsRaw) {
@@ -2890,6 +2960,7 @@ function setupEventListeners() {
           const feedUrl = buildGoogleNewsSearchUrl(formattedQuery);
 
           const verification = await verifyFeed(feedUrl);
+          if (resetGen !== topicsResetGeneration) return;
           if (!verification.ok || verification.count === 0) {
             // If no sources are selected and Google News returns 0 articles, warn user
             if (selectedSources.length === 0) {
@@ -2902,6 +2973,7 @@ function setupEventListeners() {
           }
         }
 
+        if (resetGen !== topicsResetGeneration) return;
         const newTopic = addCustomTopic({
           label,
           keywords: keywordsRaw,
@@ -2922,6 +2994,7 @@ function setupEventListeners() {
         const sourceInfo = selectedSources.length > 0 ? ` with ${selectedSources.length} RSS source(s)` : '';
         showToast(`✓ Added topic "<strong>${escapeHtml(newTopic.label)}</strong>"${sourceInfo}`);
       } catch (err) {
+        if (resetGen !== topicsResetGeneration) return;
         if (elements.newTopicFormError) {
           elements.newTopicFormError.style.display = 'block';
           elements.newTopicFormError.textContent = `Error creating topic: ${err.message || 'Unknown error'}`;
@@ -2929,7 +3002,7 @@ function setupEventListeners() {
       } finally {
         if (submitBtn) submitBtn.disabled = false;
         if (btnSpinner) btnSpinner.style.display = 'none';
-        if (btnText) btnText.textContent = 'Add Topic';
+        if (btnText) btnText.textContent = 'Create Topic';
       }
     });
   }
@@ -2975,8 +3048,11 @@ function setupEventListeners() {
       if (btnSpinner) btnSpinner.style.display = 'inline-block';
       if (btnText) btnText.textContent = 'Verifying feed...';
 
+      const resetGen = topicsResetGeneration;
+
       try {
         const verification = await verifyFeed(url);
+        if (resetGen !== topicsResetGeneration) return;
         if (!verification.ok || verification.count === 0) {
           if (elements.newSourceFormError) {
             elements.newSourceFormError.style.display = 'block';
@@ -2999,6 +3075,7 @@ function setupEventListeners() {
         renderTopicSourcesChecklist(elements.inputTopicSourceSearch ? elements.inputTopicSourceSearch.value.trim() : '');
         showToast(`✓ Added RSS source "<strong>${escapeHtml(newSource.name)}</strong>" (${verification.count} stories available)`);
       } catch (err) {
+        if (resetGen !== topicsResetGeneration) return;
         if (elements.newSourceFormError) {
           elements.newSourceFormError.style.display = 'block';
           elements.newSourceFormError.textContent = `Error verifying feed: ${err.message || 'Network error'}`;
@@ -3006,7 +3083,7 @@ function setupEventListeners() {
       } finally {
         if (submitBtn) submitBtn.disabled = false;
         if (btnSpinner) btnSpinner.style.display = 'none';
-        if (btnText) btnText.textContent = 'Add Source';
+        if (btnText) btnText.textContent = '+ Add Source to Library';
       }
     });
   }
@@ -3015,6 +3092,7 @@ function setupEventListeners() {
   if (elements.resetTopicsBtn) {
     elements.resetTopicsBtn.addEventListener('click', () => {
       if (confirm('Reset all topics, order, and local edition back to factory defaults?')) {
+        topicsResetGeneration++;
         resetTopicsToDefault();
         resetFeedsToDefault();
         updateLocalMenuLabels();

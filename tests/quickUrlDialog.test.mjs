@@ -64,8 +64,8 @@ function createApp({ storage = createStorage(), query = '', stubDomainChanges = 
           scrollIntoView() {},
           options: [{ value: 'auto', textContent: '' }],
           classList: {
-            add: (value) => classes.add(value),
-            remove: (value) => classes.delete(value),
+            add: (...values) => values.forEach(v => classes.add(v)),
+            remove: (...values) => values.forEach(v => classes.delete(v)),
             contains: (value) => classes.has(value),
             toggle(value, enabled) { enabled ? classes.add(value) : classes.delete(value); },
           },
@@ -81,7 +81,7 @@ function createApp({ storage = createStorage(), query = '', stubDomainChanges = 
             listeners.get(type).push(handler);
           },
           dispatch(type, extra = {}) {
-            const event = { target: node, defaultPrevented: false, ...extra,
+            const event = { target: node, defaultPrevented: false, stopPropagation() {}, ...extra,
               preventDefault() { this.defaultPrevented = true; } };
             for (const handler of listeners.get(type) || []) handler(event);
             return event;
@@ -772,4 +772,120 @@ test('a new topic hides old source failures and a total outage exposes the new s
   assert.equal(app.get('feedSourcesDetails').hidden, false);
   assert.equal(app.get('feedSourcesList').children[0].children[0].textContent, 'New topic source');
   assert.equal(app.get('retrySourcesBtn').disabled, false);
+});
+
+test('updateCardElement synchronizes status classes when switching between free and bypassed', () => {
+  const app = createApp();
+  const card = app.get('card-status-1');
+  card.querySelector = () => null;
+  card.className = 'flip-tile news-card--free';
+
+  app.context.updateCardElement({
+    id: 'card-status-1',
+    status: 'bypassed',
+    badge: 'SMRY',
+    targetUrl: 'https://smry.ai/https://example.com/a',
+  });
+  assert.equal(card.classList.contains('news-card--free'), false);
+  assert.equal(card.classList.contains('news-card--bypassed'), true);
+
+  app.context.updateCardElement({
+    id: 'card-status-1',
+    status: 'free',
+    badge: 'Free',
+    targetUrl: 'https://example.com/a',
+  });
+  assert.equal(card.classList.contains('news-card--bypassed'), false);
+  assert.equal(card.classList.contains('news-card--free'), true);
+});
+
+test('pull-to-refresh hides status indicator when touch gesture slides back below 10px', () => {
+  const app = createApp();
+  app.get('pullRefreshStatus').hidden = true;
+  app.document.dispatch('touchstart', { touches: [{ clientX: 50, clientY: 100 }] });
+  app.document.dispatch('touchmove', { touches: [{ clientX: 50, clientY: 140 }] });
+  assert.equal(app.get('pullRefreshStatus').hidden, false);
+  assert.equal(app.get('pullRefreshStatus').textContent, 'Pull to refresh');
+
+  // Slide finger back up to dy = 5 (< 10px deadzone)
+  app.document.dispatch('touchmove', { touches: [{ clientX: 50, clientY: 105 }] });
+  assert.equal(app.get('pullRefreshStatus').hidden, true);
+});
+
+test('checkIncomingShare resets menuToggleBtn state and closes open modals', () => {
+  const app = createApp({ query: '?url=https%3A%2F%2Fwww.nytimes.com%2Fshared' });
+  app.get('menuToggleBtn').dispatch('click');
+  assert.equal(app.get('menuToggleBtn').classList.contains('active'), true);
+  assert.equal(app.get('menuToggleBtn').getAttribute('aria-expanded'), 'true');
+  app.get('rulesModal').classList.add('open');
+
+  app.context.checkIncomingShare();
+  assert.equal(app.get('menuToggleBtn').classList.contains('active'), false);
+  assert.equal(app.get('menuToggleBtn').getAttribute('aria-expanded'), 'false');
+  assert.equal(app.get('rulesModal').classList.contains('open'), false);
+  assert.equal(app.get('quickUrlModal').classList.contains('open'), true);
+});
+
+test('resetting a single custom domain rule updates rawArticles so sorting preserves the reverted default rule', () => {
+  const app = createApp({ stubDomainChanges: false });
+  app.context.showToast = () => {};
+  app.context.updateCardElement = () => {};
+
+  const initialArticle = {
+    id: 'art-nyt-1',
+    title: 'NYT Story',
+    domain: 'nytimes.com',
+    originalUrl: 'https://www.nytimes.com/2026/story',
+    pubDate: '2026-01-01T00:00:00Z',
+  };
+  vm.runInContext(`
+    state.displayedTopic = "TOP";
+    state.rawArticles = [${JSON.stringify(initialArticle)}];
+    state.articles = [...state.rawArticles];
+  `, app.context);
+
+  // Set custom override to DIRECT
+  app.context.changeDomainStrategy('nytimes.com', 'direct');
+  assert.equal(vm.runInContext('state.rawArticles[0].rule.strategy', app.context), 'direct');
+
+  // Render rules table and click the reset button for nytimes.com
+  app.context.renderRulesTable();
+  const rows = app.get('rulesTableBody').children;
+  const nytRow = rows.find(row => row.children?.[0]?.children?.[0]?.textContent?.includes('nytimes.com'));
+  assert.ok(nytRow, 'Should render nytimes.com row in rules table');
+  const actionDiv = nytRow.children[1];
+  const resetBtn = actionDiv.children.find(el => el.classList?.contains('rule-reset-btn'));
+  assert.ok(resetBtn, 'Custom rule row should have a reset button');
+
+  resetBtn.dispatch('click');
+  assert.equal(vm.runInContext('state.rawArticles[0].rule.strategy', app.context), 'smry');
+  assert.equal(vm.runInContext('state.articles[0].rule.strategy', app.context), 'smry');
+});
+
+test('changing strategy after an unresolved Google News link does not re-trigger network resolution, and Tab recovers focus if activeElement is disabled', async () => {
+  const app = createApp();
+  let resolveCalls = 0;
+  app.context.resolvePublisherUrl = async () => {
+    resolveCalls++;
+    return '';
+  };
+  const wrapper = 'https://news.google.com/rss/articles/unresolved-wrapper-id';
+  app.context.openQuickUrlModal(wrapper);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(resolveCalls, 1);
+  assert.equal(app.get('quickUrlOpenBtn').textContent, 'Open Google News');
+  assert.equal(app.get('quickUrlOpenBtn').disabled, false);
+
+  // Changing the strategy dropdown should keep the unresolved Google News state without re-querying
+  app.choose('smry');
+  assert.equal(resolveCalls, 1, 'Should not re-run resolvePublisherUrl for the same unresolved wrapper');
+  assert.equal(app.get('quickUrlOpenBtn').textContent, 'Open Google News');
+  assert.equal(app.get('quickUrlOpenBtn').disabled, false);
+
+  // Simulate focus on a control that becomes disabled (e.g. quickUrlRememberCheck)
+  app.get('quickUrlRememberCheck').focus();
+  assert.equal(app.get('quickUrlRememberCheck').disabled, true);
+  const tabEvent = app.get('quickUrlModal').dispatch('keydown', { key: 'Tab' });
+  assert.equal(tabEvent.defaultPrevented, true);
+  assert.equal(app.document.activeElement, app.get('closeQuickUrlBtn'));
 });

@@ -61,7 +61,7 @@ export function setSourcesEnabled(sources, enabled) {
   }
   try {
     localStorage.setItem(SOURCE_PREFERENCES_KEY, JSON.stringify([...disabled]));
-    sessionDisabledSources = null;
+    sessionDisabledSources = customSaved ? null : disabled;
     return customSaved;
   } catch {
     sessionDisabledSources = disabled;
@@ -421,7 +421,11 @@ export function resetFeedsToDefault() {
   sessionDisabledSources = null;
   sessionEnabledSources.clear();
   if (typeof localStorage !== 'undefined') {
-    localStorage.removeItem(STORAGE_KEY_CUSTOM_FEEDS);
-    localStorage.removeItem(SOURCE_PREFERENCES_KEY);
+    try {
+      localStorage.removeItem(STORAGE_KEY_CUSTOM_FEEDS);
+      localStorage.removeItem(SOURCE_PREFERENCES_KEY);
+    } catch {
+      // Session state is already cleared when storage access is restricted.
+    }
   }
 }

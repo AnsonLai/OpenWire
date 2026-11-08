@@ -670,11 +670,11 @@ export function applyStrategyToArticle(article, customRule = null) {
 
   const targetUrl = buildStrategyUrl(rule.strategy, originalUrl);
   updated.targetUrl = targetUrl;
+  updated.archiveUrl = '';
+  updated.needsArchiveCheck = false;
   if (isGoogleNewsUrl(originalUrl)) {
     updated.status = 'free';
     updated.badge = 'Open source';
-    updated.archiveUrl = '';
-    updated.needsArchiveCheck = false;
     return updated;
   }
 
@@ -745,7 +745,7 @@ export async function resolveArchiveStatus(article) {
   const targetUrl = article.originalUrl;
   let archiveResult = null;
 
-  if (article.rule.strategy === STRATEGIES.WAYBACK) {
+  if (article.rule?.strategy === STRATEGIES.WAYBACK) {
     archiveResult = await checkWayback(targetUrl);
   } else {
     // Default hard paywall checker: archive.is
@@ -756,11 +756,13 @@ export async function resolveArchiveStatus(article) {
     article.status = 'bypassed';
     article.badge = 'Archive';
     article.targetUrl = archiveResult.archiveUrl;
+    article.archiveUrl = archiveResult.archiveUrl;
   } else {
     // No snapshot found or timed out: mark as locked to grey out, but preserve original link for subscribers
     article.status = 'locked';
     article.badge = 'Locked (No Archive)';
     article.targetUrl = article.originalUrl;
+    article.archiveUrl = '';
   }
 
   article.needsArchiveCheck = false;

@@ -139,3 +139,39 @@ test('PWA registration never automatically reloads an open app', async () => {
   assert.equal(updates, 1);
   assert.equal(reloads, 0);
 });
+
+test('PWA install button binds click listener only once across multiple beforeinstallprompt events', async () => {
+  const pwaSource = fs.readFileSync(new URL('../js/pwa.js', import.meta.url), 'utf8').replace(/^export /gm, '');
+  const windowEvents = new Map();
+  const btnListeners = [];
+  const installBtn = {
+    style: { display: 'none' },
+    addEventListener(type, handler) {
+      if (type === 'click') btnListeners.push(handler);
+    },
+  };
+  const context = vm.createContext({
+    console: { info() {}, warn() {} },
+    document: { getElementById: (id) => (id === 'installAppBtn' ? installBtn : null) },
+    window: { addEventListener: (event, handler) => windowEvents.set(event, handler) },
+    navigator: {},
+  });
+  vm.runInContext(pwaSource, context);
+  context.initPWA();
+
+  let promptCalls = 0;
+  const makePromptEvent = () => ({
+    preventDefault() {},
+    prompt() { promptCalls++; },
+    userChoice: Promise.resolve({ outcome: 'accepted' }),
+  });
+
+  windowEvents.get('beforeinstallprompt')(makePromptEvent());
+  windowEvents.get('beforeinstallprompt')(makePromptEvent());
+  assert.equal(btnListeners.length, 1, 'Should only register a single click listener on #installAppBtn');
+  assert.equal(installBtn.style.display, 'inline-flex');
+
+  await btnListeners[0]();
+  assert.equal(promptCalls, 1, 'Clicking install button should invoke prompt() exactly once');
+  assert.equal(installBtn.style.display, 'none');
+});
